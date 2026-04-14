@@ -1,0 +1,27 @@
+{
+  "projectName": "Проект",
+  "roles": [
+    {
+      "id": "r1",
+      "category": "Проектирование / Дизайн",
+      "title": "Middle UX / UI-дизайнер",
+      "hourlyRate": 2850,
+      "color": "#6366f1"
+    },
+    {
+      "id": "r2",
+      "category": "Проектирование / Дизайн",
+      "title": "Дизайн-директор",
+      "hourlyRate": 4000,
+      "color": "#f59e0b"
+    }
+  ],
+  "sections": [],
+  "contact": {
+    "lines": [
+      "tg: @konakovart",
+      "info@uxart.ru",
+      "uxart.ru"
+    ]
+  }
+}
