@@ -29,6 +29,11 @@ async function main() {
   // Start HTTP + WebSocket server (non-blocking)
   startHttpServer(stateManager, httpPort)
 
+  if (process.env.ESTIMATE_DISABLE_STDIO === '1') {
+    console.error('[MCP] Running in app-sync mode without stdio transport')
+    await new Promise(() => {})
+  }
+
   // Connect MCP via stdio (blocks on stdin)
   const transport = new StdioServerTransport()
   await mcpServer.connect(transport)

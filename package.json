@@ -1,9 +1,12 @@
 {
-  "name": "---",
+  "name": "tablica-podschetov",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "start": "node scripts/start.mjs",
+    "setup": "node scripts/setup.mjs",
+    "mcp": "node scripts/mcp-stdio.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",

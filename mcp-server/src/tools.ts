@@ -1,14 +1,13 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { StateManager } from './state.js'
-import { generateId } from './reducer.js'
+import type { ProjectEstimate } from './types.js'
 import {
   grandTotalHours,
   grandTotalCost,
   sectionTotalHours,
   sectionTotalCost,
   totalRoleHours,
-  taskCost,
 } from './calculations.js'
 import path from 'node:path'
 import os from 'node:os'
@@ -347,7 +346,7 @@ STRICT MCP PROTOCOL:
       }).describe('Full ProjectEstimate object'),
     },
     async ({ estimate }) => {
-      state.dispatch({ type: 'LOAD', state: estimate as any })
+      state.dispatch({ type: 'LOAD', state: estimate as ProjectEstimate })
       return json({ success: true })
     },
   )

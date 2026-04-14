@@ -42,6 +42,12 @@ export function startHttpServer(stateManager: StateManager, port: number) {
   // WebSocket server
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' })
 
+  wss.on('error', (err) => {
+    const error = err as NodeJS.ErrnoException
+    if (error.code === 'EADDRINUSE') return
+    console.error('[WS] Failed to start WebSocket server:', err)
+  })
+
   wss.on('connection', (ws) => {
     // Send current state on connect
     ws.send(JSON.stringify({ type: 'state_update', state: stateManager.getState() }))
@@ -55,6 +61,18 @@ export function startHttpServer(stateManager: StateManager, port: number) {
         client.send(message)
       }
     }
+  })
+
+  httpServer.on('error', (err) => {
+    const error = err as NodeJS.ErrnoException
+    if (error.code === 'EADDRINUSE') {
+      console.error(`[HTTP] Port ${port} is already in use. Continuing in shared-state mode without HTTP/WS.`)
+      console.error(`[HTTP] This MCP process will keep using ${stateManager.getFilePath()} for synchronization.`)
+      wss.close()
+      httpServer.close()
+      return
+    }
+    console.error('[HTTP] Failed to start server:', err)
   })
 
   httpServer.listen(port, () => {
