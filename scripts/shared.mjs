@@ -157,10 +157,12 @@ export async function findOpenPort(startPort, span = 20) {
 }
 
 function isPortFree(port) {
-  return Promise.all([
-    canListenOnHost(port, '127.0.0.1'),
-    canListenOnHost(port, '::'),
-  ]).then(results => results.every(Boolean))
+  return (async () => {
+    const ipv6Free = await canListenOnHost(port, '::')
+    if (!ipv6Free) return false
+
+    return canListenOnHost(port, '127.0.0.1')
+  })()
 }
 
 function canListenOnHost(port, host) {
