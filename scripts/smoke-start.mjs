@@ -1,6 +1,10 @@
 import { spawn } from 'node:child_process'
 import process from 'node:process'
-import { delay, findOpenPort, npmCmd, repoRoot, waitForUrl } from './shared.mjs'
+import { delay, findOpenPort, npmCmd, repoRoot, spawnManaged, waitForUrl } from './shared.mjs'
+
+function randomPortStart(base, spread) {
+  return base + Math.floor(Math.random() * spread)
+}
 
 async function stopProcessTree(child) {
   if (!child.pid || child.exitCode !== null) return
@@ -38,8 +42,10 @@ async function stopProcessTree(child) {
 }
 
 async function main() {
-  const appPort = await findOpenPort(parseInt(process.env.ESTIMATE_SMOKE_APP_PORT || '4173', 10))
-  const mcpPort = await findOpenPort(parseInt(process.env.ESTIMATE_SMOKE_HTTP_PORT || '24880', 10))
+  const appStart = parseInt(process.env.ESTIMATE_SMOKE_APP_PORT || String(randomPortStart(41000, 4000)), 10)
+  const mcpStart = parseInt(process.env.ESTIMATE_SMOKE_HTTP_PORT || String(randomPortStart(46000, 4000)), 10)
+  const appPort = await findOpenPort(appStart, 200)
+  const mcpPort = await findOpenPort(mcpStart, 200)
   const appUrl = `http://127.0.0.1:${appPort}`
   const mcpUrl = `http://127.0.0.1:${mcpPort}/api/health`
 
@@ -47,7 +53,7 @@ async function main() {
   console.error(`[Smoke] Expecting app on ${appUrl}`)
   console.error(`[Smoke] Expecting MCP on ${mcpUrl}`)
 
-  const child = spawn(npmCmd, ['run', 'start'], {
+  const child = spawnManaged(npmCmd, ['run', 'start'], {
     cwd: repoRoot,
     env: {
       ...process.env,

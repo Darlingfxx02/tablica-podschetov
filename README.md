@@ -48,7 +48,11 @@ npm run start
 git clone https://github.com/Darlingfxx02/tablica-podschetov.git && cd tablica-podschetov && ./start.sh
 ```
 
-На Windows после клонирования достаточно запустить `start.cmd`.
+На Windows после клонирования достаточно запустить:
+
+```bat
+git clone https://github.com/Darlingfxx02/tablica-podschetov.git && cd tablica-podschetov && call start.cmd
+```
 
 Если у вас уже настроен SSH-доступ к GitHub, можно использовать и SSH URL:
 

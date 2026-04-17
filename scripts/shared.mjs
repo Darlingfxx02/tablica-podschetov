@@ -117,6 +117,7 @@ export function runCommand(command, args, options = {}) {
       cwd: options.cwd ?? repoRoot,
       env: options.env ?? process.env,
       stdio: options.stdio ?? 'inherit',
+      shell: options.shell ?? shouldUseShell(command),
     })
 
     child.on('error', reject)
@@ -139,14 +140,20 @@ export function spawnManaged(command, args, options = {}) {
     cwd: options.cwd ?? repoRoot,
     env: options.env ?? process.env,
     stdio: options.stdio ?? 'inherit',
+    detached: options.detached,
+    shell: options.shell ?? shouldUseShell(command),
   })
 }
 
-export async function findOpenPort(startPort) {
-  for (let port = startPort; port < startPort + 20; port += 1) {
+function shouldUseShell(command) {
+  return process.platform === 'win32' && /\.(cmd|bat)$/i.test(command)
+}
+
+export async function findOpenPort(startPort, span = 20) {
+  for (let port = startPort; port < startPort + span; port += 1) {
     if (await isPortFree(port)) return port
   }
-  throw new Error(`No free port found in range ${startPort}-${startPort + 19}`)
+  throw new Error(`No free port found in range ${startPort}-${startPort + span - 1}`)
 }
 
 function isPortFree(port) {
