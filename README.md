@@ -45,10 +45,16 @@ npm run start
 Если нужно скачать и сразу запустить одной строкой на macOS / Linux:
 
 ```bash
-git clone git@github.com:Darlingfxx02/tablica-podschetov.git && cd tablica-podschetov && ./start.sh
+git clone https://github.com/Darlingfxx02/tablica-podschetov.git && cd tablica-podschetov && ./start.sh
 ```
 
 На Windows после клонирования достаточно запустить `start.cmd`.
+
+Если у вас уже настроен SSH-доступ к GitHub, можно использовать и SSH URL:
+
+```bash
+git clone git@github.com:Darlingfxx02/tablica-podschetov.git
+```
 
 Если у вас установлен `nvm`, можно просто выполнить:
 
