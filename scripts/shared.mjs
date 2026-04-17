@@ -62,7 +62,10 @@ export async function pathExists(targetPath) {
 }
 
 export function commandExists(command, args = ['--version']) {
-  const result = spawnSync(command, args, { stdio: 'ignore' })
+  const result = spawnSync(command, args, {
+    stdio: 'ignore',
+    shell: shouldUseShell(command),
+  })
   return !result.error && result.status === 0
 }
 
