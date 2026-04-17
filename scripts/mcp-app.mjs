@@ -1,23 +1,30 @@
 import path from 'node:path'
 import process from 'node:process'
-import { mcpDir, requireMcpDependencies, spawnManaged } from './shared.mjs'
+import { handleRuntimeError, mcpDir, nodeCmd, requireMcpDependencies, spawnManaged } from './shared.mjs'
 
-const tsxPath = await requireMcpDependencies()
-const entryPath = path.join(mcpDir, 'src', 'index.ts')
+try {
+  const tsxPath = await requireMcpDependencies()
+  const entryPath = path.join(mcpDir, 'src', 'index.ts')
 
-const child = spawnManaged(tsxPath, [entryPath], {
-  cwd: mcpDir,
-  stdio: 'inherit',
-  env: {
-    ...process.env,
-    ESTIMATE_DISABLE_STDIO: '1',
-  },
-})
+  const child = spawnManaged(nodeCmd, [tsxPath, entryPath], {
+    cwd: mcpDir,
+    stdio: 'inherit',
+    env: {
+      ...process.env,
+      ESTIMATE_DISABLE_STDIO: '1',
+    },
+  })
 
-child.on('exit', (code, signal) => {
-  if (signal) {
-    process.kill(process.pid, signal)
-    return
+  child.on('exit', (code, signal) => {
+    if (signal) {
+      process.kill(process.pid, signal)
+      return
+    }
+    process.exit(code ?? 0)
+  })
+} catch (error) {
+  if (handleRuntimeError(error)) {
+    process.exit(1)
   }
-  process.exit(code ?? 0)
-})
+  throw error
+}

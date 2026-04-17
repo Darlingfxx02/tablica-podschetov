@@ -3,9 +3,14 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=20.19.0",
+    "npm": ">=10"
+  },
   "scripts": {
     "start": "node scripts/start.mjs",
     "setup": "node scripts/setup.mjs",
+    "smoke:start": "node scripts/smoke-start.mjs",
     "mcp": "node scripts/mcp-stdio.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
