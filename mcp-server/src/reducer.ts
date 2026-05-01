@@ -1,4 +1,4 @@
-import type { ProjectEstimate, Role, Section, Task, SectionType, Breakpoint } from './types.js'
+import type { ProjectEstimate, Role, Section, Task, SectionType, Breakpoint, RoadmapSettings } from './types.js'
 
 export const ROLE_COLORS = [
   '#6366f1', // indigo
@@ -62,26 +62,58 @@ export type Action =
   | { type: 'MOVE_TASK'; sectionId: string; taskId: string; direction: 'up' | 'down' }
   | { type: 'REORDER_TASK'; sectionId: string; fromId: string; toId: string }
   | { type: 'SET_CONTACT'; lines: string[] }
+  | { type: 'SET_ROADMAP_SETTINGS'; settings: Partial<RoadmapSettings> }
   | { type: 'LOAD'; state: ProjectEstimate }
 
-function computeApprovalTask(state: ProjectEstimate): Task {
+function getApprovalPercent(state: ProjectEstimate): number {
+  return state.roadmapSettings?.approvalPercent ?? 25
+}
+
+function computeApprovalTask(state: ProjectEstimate, existingTaskId?: string): Task {
+  const pct = getApprovalPercent(state)
   const task: Task = {
-    id: generateId(),
+    id: existingTaskId || generateId(),
     title: 'Обсуждение и правки',
-    description: '25% от общего времени проекта',
+    description: `${pct}% от общего времени проекта`,
     hours: {},
   }
   state.roles.forEach(r => {
-    const total = state.sections.reduce(
-      (sum, s) => sum + s.tasks.reduce((ts, t) => ts + (t.hours[r.id] || 0), 0),
-      0,
-    )
-    task.hours[r.id] = Math.round(total * 0.25)
+    const total = state.sections
+      .filter(s => s.sectionType !== 'approval')
+      .reduce(
+        (sum, s) => sum + s.tasks.reduce((ts, t) => ts + (t.hours[r.id] || 0), 0),
+        0,
+      )
+    task.hours[r.id] = Math.round(total * (pct / 100))
   })
   return task
 }
 
+function recomputeApprovalSections(state: ProjectEstimate): ProjectEstimate {
+  const hasApproval = state.sections.some(s => s.sectionType === 'approval')
+  if (!hasApproval) return state
+  return {
+    ...state,
+    sections: state.sections.map(s => {
+      if (s.sectionType !== 'approval') return s
+      const existingTask = s.tasks[0]
+      return {
+        ...s,
+        tasks: [computeApprovalTask(state, existingTask?.id)],
+      }
+    }),
+  }
+}
+
 export function reducer(state: ProjectEstimate, action: Action): ProjectEstimate {
+  const next = reducerInner(state, action)
+  if (action.type !== 'LOAD' && next !== state) {
+    return recomputeApprovalSections(next)
+  }
+  return next
+}
+
+function reducerInner(state: ProjectEstimate, action: Action): ProjectEstimate {
   switch (action.type) {
     case 'SET_PROJECT_NAME':
       return { ...state, projectName: action.name }
@@ -289,8 +321,13 @@ export function reducer(state: ProjectEstimate, action: Action): ProjectEstimate
     }
 
     case 'ADD_DIVIDER': {
+      const target = state.sections.find(s => s.id === action.sectionId)
+      if (!target) return state
+      const synced = !!target.linkedGroupId && !target.linkBroken
+      const linkId = synced ? generateId() : undefined
       const newDivider: Task = {
         id: generateId(),
+        linkId,
         title: '',
         description: '',
         hours: {},
@@ -298,9 +335,28 @@ export function reducer(state: ProjectEstimate, action: Action): ProjectEstimate
       }
       return {
         ...state,
-        sections: state.sections.map(s =>
-          s.id === action.sectionId ? { ...s, tasks: [...s.tasks, newDivider] } : s,
-        ),
+        sections: state.sections.map(s => {
+          if (s.id === action.sectionId) {
+            return { ...s, tasks: [...s.tasks, newDivider] }
+          }
+          if (synced && linkId && target.linkedGroupId && s.linkedGroupId === target.linkedGroupId) {
+            return {
+              ...s,
+              tasks: [
+                ...s.tasks,
+                {
+                  id: generateId(),
+                  linkId,
+                  title: '',
+                  description: '',
+                  hours: {},
+                  isDivider: true,
+                },
+              ],
+            }
+          }
+          return s
+        }),
       }
     }
 
@@ -376,12 +432,27 @@ export function reducer(state: ProjectEstimate, action: Action): ProjectEstimate
     }
 
     case 'REORDER_TASK': {
+      const target = state.sections.find(s => s.id === action.sectionId)
+      if (!target) return state
+      const fromTask = target.tasks.find(t => t.id === action.fromId)
+      const toTask = target.tasks.find(t => t.id === action.toId)
+      const fromLinkId = fromTask?.linkId
+      const toLinkId = toTask?.linkId
+      const synced = !!target.linkedGroupId && !target.linkBroken
+      const canMirror = synced && !!fromLinkId && !!toLinkId
       return {
         ...state,
         sections: state.sections.map(s => {
-          if (s.id !== action.sectionId) return s
-          const fromIdx = s.tasks.findIndex(t => t.id === action.fromId)
-          const toIdx = s.tasks.findIndex(t => t.id === action.toId)
+          const isTarget = s.id === action.sectionId
+          const isLinked =
+            canMirror && !!target.linkedGroupId && s.linkedGroupId === target.linkedGroupId
+          if (!isTarget && !isLinked) return s
+          const fromIdx = isTarget
+            ? s.tasks.findIndex(t => t.id === action.fromId)
+            : s.tasks.findIndex(t => t.linkId === fromLinkId)
+          const toIdx = isTarget
+            ? s.tasks.findIndex(t => t.id === action.toId)
+            : s.tasks.findIndex(t => t.linkId === toLinkId)
           if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return s
           const tasks = [...s.tasks]
           const [moved] = tasks.splice(fromIdx, 1)
@@ -393,6 +464,22 @@ export function reducer(state: ProjectEstimate, action: Action): ProjectEstimate
 
     case 'SET_CONTACT':
       return { ...state, contact: { lines: action.lines } }
+
+    case 'SET_ROADMAP_SETTINGS': {
+      const current: RoadmapSettings = state.roadmapSettings ?? {
+        startDate: new Date().toISOString().slice(0, 10),
+        hoursPerDay: 8,
+        skipWeekends: true,
+        skipHolidays: false,
+        smallTaskThreshold: 80,
+        approvalPercent: 25,
+        approvalMode: 'after-task',
+        approvalWeekday: 5,
+        grouping: 'by-phase',
+        showDisclaimer: true,
+      }
+      return { ...state, roadmapSettings: { ...current, ...action.settings } }
+    }
 
     case 'LOAD':
       return action.state

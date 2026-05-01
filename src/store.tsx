@@ -339,8 +339,13 @@ function reducerInner(state: ProjectEstimate, action: Action): ProjectEstimate {
     }
 
     case 'ADD_DIVIDER': {
+      const target = state.sections.find(s => s.id === action.sectionId)
+      if (!target) return state
+      const synced = !!target.linkedGroupId && !target.linkBroken
+      const linkId = synced ? generateId() : undefined
       const newDivider: Task = {
         id: generateId(),
+        linkId,
         title: '',
         description: '',
         hours: {},
@@ -348,9 +353,28 @@ function reducerInner(state: ProjectEstimate, action: Action): ProjectEstimate {
       }
       return {
         ...state,
-        sections: state.sections.map(s =>
-          s.id === action.sectionId ? { ...s, tasks: [...s.tasks, newDivider] } : s,
-        ),
+        sections: state.sections.map(s => {
+          if (s.id === action.sectionId) {
+            return { ...s, tasks: [...s.tasks, newDivider] }
+          }
+          if (synced && linkId && target.linkedGroupId && s.linkedGroupId === target.linkedGroupId) {
+            return {
+              ...s,
+              tasks: [
+                ...s.tasks,
+                {
+                  id: generateId(),
+                  linkId,
+                  title: '',
+                  description: '',
+                  hours: {},
+                  isDivider: true,
+                },
+              ],
+            }
+          }
+          return s
+        }),
       }
     }
 
@@ -426,12 +450,27 @@ function reducerInner(state: ProjectEstimate, action: Action): ProjectEstimate {
     }
 
     case 'REORDER_TASK': {
+      const target = state.sections.find(s => s.id === action.sectionId)
+      if (!target) return state
+      const fromTask = target.tasks.find(t => t.id === action.fromId)
+      const toTask = target.tasks.find(t => t.id === action.toId)
+      const fromLinkId = fromTask?.linkId
+      const toLinkId = toTask?.linkId
+      const synced = !!target.linkedGroupId && !target.linkBroken
+      const canMirror = synced && !!fromLinkId && !!toLinkId
       return {
         ...state,
         sections: state.sections.map(s => {
-          if (s.id !== action.sectionId) return s
-          const fromIdx = s.tasks.findIndex(t => t.id === action.fromId)
-          const toIdx = s.tasks.findIndex(t => t.id === action.toId)
+          const isTarget = s.id === action.sectionId
+          const isLinked =
+            canMirror && !!target.linkedGroupId && s.linkedGroupId === target.linkedGroupId
+          if (!isTarget && !isLinked) return s
+          const fromIdx = isTarget
+            ? s.tasks.findIndex(t => t.id === action.fromId)
+            : s.tasks.findIndex(t => t.linkId === fromLinkId)
+          const toIdx = isTarget
+            ? s.tasks.findIndex(t => t.id === action.toId)
+            : s.tasks.findIndex(t => t.linkId === toLinkId)
           if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return s
           const tasks = [...s.tasks]
           const [moved] = tasks.splice(fromIdx, 1)
@@ -535,7 +574,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // Persist to localStorage + sync to server
+  // Persist to localStorage + sync to server (debounced)
+  const putTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
 
@@ -545,15 +585,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    // Sync state to server
-    fetch(`${MCP_SERVER_URL}/api/state`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(state),
-    }).catch(() => {
-      // Server not available, that's ok
-    })
+    if (putTimerRef.current) clearTimeout(putTimerRef.current)
+    putTimerRef.current = setTimeout(() => {
+      putTimerRef.current = null
+      fetch(`${MCP_SERVER_URL}/api/state`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(state),
+      }).catch(() => {
+        // Server not available, that's ok
+      })
+    }, 250)
   }, [state])
+
+  useEffect(() => {
+    return () => {
+      if (putTimerRef.current) clearTimeout(putTimerRef.current)
+    }
+  }, [])
 
   return (
     <StoreContext.Provider value={{ state, dispatch }}>

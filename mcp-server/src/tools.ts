@@ -268,6 +268,42 @@ STRICT MCP PROTOCOL:
     },
   )
 
+  // ── Roadmap settings ──
+
+  server.tool(
+    'set_roadmap_settings',
+    'Patch RoadmapSettings (partial update). Fields you pass are merged into state.roadmapSettings; everything else is preserved. If roadmapSettings did not exist yet, missing fields are filled with defaults (hoursPerDay 8, skipWeekends true, approvalPercent 25, approvalMode "after-task", grouping "by-phase", etc.). After this call the server reducer automatically recomputes all approval sections against the new approvalPercent, so there is no need to touch approval tasks by hand.',
+    {
+      startDate: z.string().optional().describe('ISO date string, e.g. "2026-04-10"'),
+      hoursPerDay: z.number().optional().describe('Working hours per day (default 8)'),
+      skipWeekends: z.boolean().optional().describe('Skip Sat/Sun on the roadmap'),
+      skipHolidays: z.boolean().optional().describe('Skip RU public holidays on the roadmap'),
+      smallTaskThreshold: z.number().optional().describe('% of hoursPerDay to allow day-stacking small tasks (default 80)'),
+      approvalPercent: z.number().optional().describe('% of total project hours reserved for approval block (default 25)'),
+      approvalMode: z.enum(['after-task', 'weekly', 'after-block']).optional().describe('When approval hours land on the roadmap'),
+      approvalWeekday: z.number().optional().describe('1=Mon..5=Fri — only used when approvalMode=weekly'),
+      grouping: z.enum(['by-phase', 'by-section']).optional().describe('Roadmap grouping mode'),
+      showDisclaimer: z.boolean().optional().describe('Show the "примерные сроки" disclaimer line on the roadmap'),
+    },
+    async (patch) => {
+      const settings = Object.fromEntries(
+        Object.entries(patch).filter(([, v]) => v !== undefined),
+      )
+      state.dispatch({ type: 'SET_ROADMAP_SETTINGS', settings })
+      return json(state.getState().roadmapSettings)
+    },
+  )
+
+  server.tool(
+    'set_approval_percent',
+    'Shortcut over set_roadmap_settings: set only RoadmapSettings.approvalPercent. Use when the user asks "put approval at X %". The reducer then automatically recomputes every approval section against the new percent.',
+    { percent: z.number().describe('Approval hours as % of total project hours (e.g. 25, 30)') },
+    async ({ percent }) => {
+      state.dispatch({ type: 'SET_ROADMAP_SETTINGS', settings: { approvalPercent: percent } })
+      return json(state.getState().roadmapSettings)
+    },
+  )
+
   // ── Calculations ──
 
   server.tool(
@@ -343,6 +379,7 @@ STRICT MCP PROTOCOL:
         })),
         sections: z.array(z.any()),
         contact: z.object({ lines: z.array(z.string()) }),
+        roadmapSettings: z.any().optional(),
       }).describe('Full ProjectEstimate object'),
     },
     async ({ estimate }) => {

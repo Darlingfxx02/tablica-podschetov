@@ -39,9 +39,29 @@ export interface ContactInfo {
   lines: string[]
 }
 
+export interface RoadmapDateOverride {
+  startDate?: string
+  endDate?: string
+}
+
+export interface RoadmapSettings {
+  startDate: string
+  hoursPerDay: number
+  skipWeekends: boolean
+  skipHolidays: boolean
+  smallTaskThreshold: number
+  approvalPercent: number
+  approvalMode: 'after-task' | 'weekly' | 'after-block'
+  approvalWeekday?: number
+  grouping: 'by-phase' | 'by-section'
+  showDisclaimer: boolean
+  dateOverrides?: Record<string, RoadmapDateOverride>
+}
+
 export interface ProjectEstimate {
   projectName: string
   roles: Role[]
   sections: Section[]
   contact: ContactInfo
+  roadmapSettings?: RoadmapSettings
 }
