@@ -33,7 +33,7 @@ export function ExportButton() {
     <button
       onClick={handleExport}
       disabled={isExporting}
-      className="flex items-center gap-2 px-4 py-2.5 bg-dark text-white rounded-xl text-sm font-medium hover:bg-gray-800 transition-colors cursor-pointer shadow-sm"
+      className="flex items-center gap-1.5 h-9 px-3 bg-[#202020] text-white rounded-lg text-sm font-medium hover:bg-black transition-colors cursor-pointer"
     >
       <ArrowDownTrayIcon className="w-4 h-4" />
       {isExporting ? 'Подготовка...' : 'Скачать .xlsx'}

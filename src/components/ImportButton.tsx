@@ -32,7 +32,7 @@ export function ImportButton() {
       <button
         disabled={isImporting}
         onClick={() => inputRef.current?.click()}
-        className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 text-dark rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors cursor-pointer shadow-sm"
+        className="flex items-center gap-1.5 h-9 px-3 bg-white border border-[var(--color-border)] text-[#202020] rounded-lg text-sm font-medium hover:bg-[var(--color-row-even)] transition-colors cursor-pointer"
         title={error ?? undefined}
       >
         <ArrowUpTrayIcon className="w-4 h-4" />

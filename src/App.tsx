@@ -261,15 +261,15 @@ function App() {
       {/* Main canvas */}
       <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
         {/* Page header */}
-        <header className="bg-white border-b border-[var(--color-border)] flex items-center gap-4 px-8 h-14">
+        <header className="relative bg-white border-b border-[var(--color-border)] flex items-center gap-4 px-8 h-12">
           <input
             type="text"
             value={state.projectName}
             onChange={e => dispatch({ type: 'SET_PROJECT_NAME', name: e.target.value })}
             placeholder="Без имени"
-            className="text-[18px] font-semibold bg-transparent border-none outline-none focus:ring-0 min-w-0 flex-1 leading-none"
+            className="text-[14px] font-medium text-[#202020] bg-transparent border-none outline-none focus:ring-0 min-w-0 flex-1 leading-none"
           />
-          <div className="flex bg-[var(--color-row-even)] rounded-lg p-0.5">
+          <div className="absolute left-1/2 -translate-x-1/2 flex bg-[var(--color-row-even)] rounded-lg p-0.5">
             <TabButton tab="editor" icon={<PencilSquareIcon className="w-4 h-4" />} label="Редактор" />
             <TabButton tab="preview" icon={<TableCellsIcon className="w-4 h-4" />} label="Оценка" />
             <TabButton tab="roadmap" icon={<CalendarDaysIcon className="w-4 h-4" />} label="Дорожная карта" />
@@ -307,7 +307,7 @@ function App() {
                         ref={roleDrag.itemRef(role.id)}
                         {...roleDrag.dragHandleProps(role.id)}
                         onClick={() => setEditingRoleId(role.id)}
-                        className={`bg-white border border-[var(--color-border)] rounded-xl px-3.5 py-3 min-w-[180px] flex-1 max-w-[240px] hover:border-indigo-300 cursor-grab active:cursor-grabbing ${
+                        className={`bg-white border border-gray-100/80 rounded-xl px-3.5 py-3 min-w-[180px] flex-1 max-w-[240px] cursor-grab active:cursor-grabbing ${
                           roleDrag.draggingId === role.id ? 'opacity-0 pointer-events-none' : ''
                         }`}
                       >
