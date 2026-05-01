@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useStore, createEmptyRole } from './store'
 import { EstimateTable } from './components/preview/EstimateTable'
 import { RoadmapTable } from './components/preview/RoadmapTable'
@@ -151,17 +151,19 @@ function App() {
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       {/* Top bar */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+      <header className="bg-white border-b border-[var(--color-border)] sticky top-0 z-10">
         <div className="relative px-4 py-3 flex items-center gap-4">
           <div className="flex items-end gap-3 flex-1 min-w-0">
             <button
               onClick={() => navigate('/settings')}
-              className="shrink-0 p-1 -m-1 text-gray-400 hover:text-dark transition-colors cursor-pointer rounded-lg hover:bg-gray-100"
+              className="shrink-0 p-1 -m-1 text-[var(--color-muted)] hover:text-[#202020] transition-colors cursor-pointer rounded-lg hover:bg-[var(--color-row-even)]"
               title="Настройки"
             >
               <Bars3Icon className="w-5 h-5" />
             </button>
-            <img src={logoUrl} alt="uxart" className="h-7 w-auto shrink-0" />
+            <Link to="/" className="shrink-0" title="К проектам">
+              <img src={logoUrl} alt="uxart" className="h-7 w-auto" />
+            </Link>
             <input
               type="text"
               value={state.projectName}
@@ -169,7 +171,7 @@ function App() {
               className="text-sm font-medium text-gray-500 bg-transparent border-none outline-none focus:ring-0 min-w-0 flex-1 leading-none pb-0.5"
             />
           </div>
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex bg-gray-100 rounded-lg p-0.5">
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex bg-[var(--color-row-even)] rounded-lg p-0.5">
             <button
               onClick={() => setActiveTab('editor')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all cursor-pointer ${
@@ -213,23 +215,24 @@ function App() {
             <div className="flex flex-1 min-h-0">
               {/* Sidebar */}
               <aside
-                className="w-64 min-w-64 bg-gray-50 border-r border-gray-200 flex flex-col overflow-y-auto overscroll-contain"
+                className="w-[260px] shrink-0 bg-white border-r border-[var(--color-border)] flex flex-col overflow-y-auto overscroll-contain"
               >
-                <div className="px-3 pt-3 pb-2 flex items-center justify-between">
-                  <span className="text-sm text-gray-400 tracking-wide">блоки работ</span>
+                <div className="px-3 pt-4 pb-2 flex items-center justify-between">
+                  <span className="text-[11px] uppercase tracking-wide text-[var(--color-muted)] font-medium px-2">Блоки работ</span>
                   <AddSectionDropdown onAdd={type => dispatch({ type: 'ADD_SECTION', sectionType: type })} />
                 </div>
                 <nav className="flex-1 px-2 pb-2 space-y-0.5">
                   {state.sections.map((section) => {
+                    const isActive = resolvedActiveSectionId === section.id
                     return (
                       <div
                         key={section.id}
                         ref={sectionDrag.itemRef(section.id)}
                         {...sectionDrag.dragHandleProps(section.id)}
-                        className={`relative flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm cursor-grab active:cursor-grabbing select-none border font-medium ${
-                          resolvedActiveSectionId === section.id
-                            ? 'bg-white border-gray-200 text-dark'
-                            : 'border-transparent text-gray-600 hover:text-dark'
+                        className={`relative flex items-center gap-1.5 px-3 h-9 rounded-lg text-[13px] cursor-grab active:cursor-grabbing select-none transition-colors ${
+                          isActive
+                            ? 'bg-[#202020] text-white'
+                            : 'text-[#202020] hover:bg-[var(--color-row-even)]'
                         } ${sectionDrag.draggingId === section.id ? 'opacity-0 pointer-events-none' : ''}`}
                         onClick={() => setActiveSectionId(section.id)}
                         onContextMenu={(e) => {
@@ -248,9 +251,13 @@ function App() {
                             }}
                             title={section.linkBroken ? 'Связь разорвана — нажмите, чтобы снова синхронизировать' : 'Блоки синхронизированы — нажмите, чтобы разорвать связь'}
                             className={`shrink-0 p-0.5 -m-0.5 rounded transition-colors cursor-pointer ${
-                              section.linkBroken
-                                ? 'text-gray-300 hover:text-gray-400'
-                                : 'text-indigo-500 hover:text-indigo-600'
+                              isActive
+                                ? section.linkBroken
+                                  ? 'text-white/30 hover:text-white/50'
+                                  : 'text-indigo-300 hover:text-indigo-200'
+                                : section.linkBroken
+                                  ? 'text-gray-300 hover:text-gray-400'
+                                  : 'text-indigo-500 hover:text-indigo-600'
                             }`}
                           >
                             <LinkIcon className="w-4 h-4" />
@@ -261,7 +268,11 @@ function App() {
                           uiSettings.optionalDisplay === 'pill'
                             ? (
                               <span
-                                className="shrink-0 inline-flex items-center px-1.5 h-5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 leading-none tracking-wide"
+                                className={`shrink-0 inline-flex items-center px-1.5 h-5 rounded text-[10px] font-bold leading-none tracking-wide border ${
+                                  isActive
+                                    ? 'bg-white/10 text-white border-white/20'
+                                    : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                }`}
                                 title="Клиент сможет отключить этот раздел"
                               >
                                 опца
@@ -269,32 +280,32 @@ function App() {
                             )
                             : (
                               <PuzzlePieceSolidIcon
-                                className="shrink-0 w-4 h-4 text-indigo-500"
+                                className={`shrink-0 w-4 h-4 ${isActive ? 'text-indigo-300' : 'text-indigo-500'}`}
                                 aria-label="Клиент сможет отключить этот раздел"
                               />
                             )
                         )}
-                        <span className="text-xs text-gray-400 shrink-0 tabular-nums">
+                        <span className={`text-xs shrink-0 tabular-nums ${isActive ? 'text-white/60' : 'text-[var(--color-muted)]'}`}>
                           {sectionTotalHours(section)}ч
                         </span>
                       </div>
                     )
                   })}
                   {state.sections.length === 0 && (
-                    <div className="text-center py-8 text-gray-400 text-xs">
-                      Нажмите "Добавить"
+                    <div className="text-center py-8 text-[var(--color-muted)] text-xs">
+                      Нажмите «Добавить»
                     </div>
                   )}
                 </nav>
                 {state.sections.length > 0 && (
-                  <div className="px-3 pb-3 pt-2 border-t border-gray-200 mt-auto">
+                  <div className="p-3 border-t border-[var(--color-border)] mt-auto">
                     <div className="flex items-baseline justify-between">
-                      <span className="text-sm text-gray-400 tracking-wide">итого по проекту</span>
-                      <span className="text-sm text-gray-400">{grandTotalHours(state)} ч</span>
+                      <span className="text-[11px] uppercase tracking-wide text-[var(--color-muted)] font-medium">Итого</span>
+                      <span className="text-[12px] text-[var(--color-muted)] tabular-nums">{grandTotalHours(state)} ч</span>
                     </div>
                     <div className="flex items-baseline gap-1 mt-1">
-                      <span className="text-base font-bold text-dark">{formatNumber(grandTotalCost(state))}</span>
-                      <span className="text-xs text-gray-400">руб.</span>
+                      <span className="text-[16px] font-bold text-[#202020] tabular-nums">{formatNumber(grandTotalCost(state))}</span>
+                      <span className="text-xs text-[var(--color-muted)]">руб.</span>
                     </div>
                   </div>
                 )}
