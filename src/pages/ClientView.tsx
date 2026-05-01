@@ -7,30 +7,24 @@ import logoUrl from '../assets/logo.svg'
 
 type Mode = 'gate' | 'client'
 
-const CLIENT_CHOICE_KEY = (token: string) => `client-mode:${token}`
-
 /**
  * /c/:token — single entry the share link points at.
  *
- * Two-button gate: «Я клиент» renders the read-only proposal,
- * «Я сотрудник» bounces to /p/:id (already authed) or /login (then back).
+ * Auth check first: a logged-in staff member lands straight on the
+ * editor for this proposal, no gate. A guest sees a two-card pick:
+ * «Я клиент» renders the read-only preview, «Я сотрудник» bounces to
+ * /login (with a return URL to /p/:id) — the login form has a switch
+ * to the register tab if they don't have an account yet.
  *
- * The client choice is persisted in localStorage scoped to the token, so
- * a returning client lands straight into the proposal.
+ * The gate appears every visit for guests; no localStorage shortcut.
  */
 export function ClientView() {
   const { token = '' } = useParams<{ token: string }>()
   const navigate = useNavigate()
-  const { state: authState, user } = useAuth()
+  const { state: authState } = useAuth()
   const [data, setData] = useState<PublicView | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [mode, setMode] = useState<Mode>(() => {
-    try {
-      return localStorage.getItem(CLIENT_CHOICE_KEY(token)) === '1' ? 'client' : 'gate'
-    } catch {
-      return 'gate'
-    }
-  })
+  const [mode, setMode] = useState<Mode>('gate')
 
   useEffect(() => {
     if (!token) return
@@ -41,22 +35,20 @@ export function ClientView() {
     return () => { cancelled = true }
   }, [token])
 
+  // Authed staff hitting the share link → straight to the editor for
+  // this proposal. Skip the gate entirely.
+  useEffect(() => {
+    if (authState.status !== 'authed') return
+    if (!data) return
+    navigate(`/p/${data.proposal.id}`, { replace: true })
+  }, [authState.status, data, navigate])
+
   function chooseClient() {
-    try { localStorage.setItem(CLIENT_CHOICE_KEY(token), '1') } catch { /* ignore */ }
     setMode('client')
   }
 
   function chooseStaff() {
-    if (authState.status === 'loading') return
     const proposalId = data?.proposal.id
-    if (user && proposalId) {
-      navigate(`/p/${proposalId}`)
-      return
-    }
-    if (user) {
-      navigate('/')
-      return
-    }
     const returnTo = proposalId ? `/p/${proposalId}` : '/'
     navigate(`/login?return=${encodeURIComponent(returnTo)}`)
   }
@@ -70,6 +62,18 @@ export function ClientView() {
             Ссылка устарела или была отозвана. Попроси отправителя поделиться новой.
           </p>
         </div>
+      </main>
+    )
+  }
+
+  // While we don't know the auth state (or we know it's authed and are
+  // about to redirect to the editor), show a quiet loader instead of
+  // flashing the gate.
+  const willRedirectToEditor = authState.status === 'authed'
+  if (authState.status === 'loading' || willRedirectToEditor) {
+    return (
+      <main className="min-h-screen flex items-center justify-center text-[14px] text-[var(--color-muted)]">
+        Загружаем…
       </main>
     )
   }
