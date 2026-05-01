@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useStore, createEmptyRole } from './store'
 import { EstimateTable } from './components/preview/EstimateTable'
 import { RoadmapTable } from './components/preview/RoadmapTable'
@@ -10,7 +11,7 @@ import { ApprovalPercentControl } from './components/shared/ApprovalPercentContr
 import {
   PencilSquareIcon, PlusIcon, TrashIcon,
   XMarkIcon, LinkIcon, ChevronDownIcon, Bars3Icon,
-  CalendarDaysIcon, TableCellsIcon, PuzzlePieceIcon, CheckIcon,
+  CalendarDaysIcon, TableCellsIcon, PuzzlePieceIcon,
 } from '@heroicons/react/24/outline'
 import { PuzzlePieceIcon as PuzzlePieceSolidIcon } from '@heroicons/react/24/solid'
 import { sectionTotalHours, sectionTotalCost, totalRoleHours, grandTotalHours, grandTotalCost, formatNumber } from './lib/calculations'
@@ -107,29 +108,6 @@ function AddSectionDropdown({ onAdd }: { onAdd: (type: SectionType) => void }) {
   )
 }
 
-function SettingsSegment({
-  active, onClick, label,
-}: {
-  active: boolean
-  onClick: () => void
-  label: React.ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex-1 flex items-center justify-center gap-1.5 h-7 rounded-md text-[12px] font-medium transition-colors cursor-pointer ${
-        active
-          ? 'bg-white text-dark shadow-sm'
-          : 'text-gray-500 hover:text-dark'
-      }`}
-    >
-      {label}
-      {active && <CheckIcon className="w-3.5 h-3.5 text-indigo-500" />}
-    </button>
-  )
-}
-
 function App() {
   const { state, dispatch } = useStore()
   const [activeTab, setActiveTab] = useState<'editor' | 'preview' | 'roadmap'>('editor')
@@ -137,26 +115,8 @@ function App() {
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null)
   const [rolesCollapsed, setRolesCollapsed] = useState(false)
   const [sectionMenu, setSectionMenu] = useState<{ id: string; x: number; y: number } | null>(null)
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const burgerRef = useRef<HTMLButtonElement>(null)
-  const settingsRef = useRef<HTMLDivElement>(null)
-  const { settings: uiSettings, patch: patchUiSettings } = useUiSettings()
-
-  useEffect(() => {
-    if (!settingsOpen) return
-    function onDown(e: MouseEvent) {
-      if (settingsRef.current?.contains(e.target as Node)) return
-      if (burgerRef.current?.contains(e.target as Node)) return
-      setSettingsOpen(false)
-    }
-    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setSettingsOpen(false) }
-    document.addEventListener('mousedown', onDown)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', onDown)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [settingsOpen])
+  const navigate = useNavigate()
+  const { settings: uiSettings } = useUiSettings()
 
   useEffect(() => {
     if (!sectionMenu) return
@@ -195,13 +155,8 @@ function App() {
         <div className="relative px-4 py-3 flex items-center gap-4">
           <div className="flex items-end gap-3 flex-1 min-w-0">
             <button
-              ref={burgerRef}
-              onClick={() => setSettingsOpen(o => !o)}
-              className={`shrink-0 p-1 -m-1 transition-colors cursor-pointer rounded-lg ${
-                settingsOpen
-                  ? 'text-dark bg-gray-100'
-                  : 'text-gray-400 hover:text-dark hover:bg-gray-100'
-              }`}
+              onClick={() => navigate('/settings')}
+              className="shrink-0 p-1 -m-1 text-gray-400 hover:text-dark transition-colors cursor-pointer rounded-lg hover:bg-gray-100"
               title="Настройки"
             >
               <Bars3Icon className="w-5 h-5" />
@@ -309,7 +264,7 @@ function App() {
                                 className="shrink-0 inline-flex items-center px-1.5 h-5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 leading-none tracking-wide"
                                 title="Клиент сможет отключить этот раздел"
                               >
-                                Opts
+                                опца
                               </span>
                             )
                             : (
@@ -647,39 +602,6 @@ function App() {
               >
                 Готово
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {settingsOpen && (
-        <div
-          ref={settingsRef}
-          className="fixed z-40 bg-white border border-gray-200 rounded-xl shadow-lg w-[280px] overflow-hidden"
-          style={{
-            top: (burgerRef.current?.getBoundingClientRect().bottom ?? 0) + 6,
-            left: burgerRef.current?.getBoundingClientRect().left ?? 0,
-          }}
-        >
-          <div className="px-3 pt-3 pb-2 text-[11px] uppercase tracking-wide text-gray-400 font-medium">
-            Настройки
-          </div>
-          <div className="px-3 pb-3">
-            <div className="text-[12px] text-gray-500 mb-1.5">Опциональные разделы</div>
-            <div className="flex p-0.5 bg-gray-100 rounded-lg">
-              <SettingsSegment
-                active={uiSettings.optionalDisplay === 'pill'}
-                onClick={() => patchUiSettings({ optionalDisplay: 'pill' })}
-                label={<span className="font-bold tracking-wide text-[11px]">Opts</span>}
-              />
-              <SettingsSegment
-                active={uiSettings.optionalDisplay === 'icon'}
-                onClick={() => patchUiSettings({ optionalDisplay: 'icon' })}
-                label={<PuzzlePieceSolidIcon className="w-4 h-4" />}
-              />
-            </div>
-            <div className="text-[11px] text-gray-400 mt-1.5">
-              Как помечать опциональные разделы в боковом меню
             </div>
           </div>
         </div>
