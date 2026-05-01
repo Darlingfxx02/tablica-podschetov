@@ -10,9 +10,9 @@ import { ApprovalPercentControl } from './components/shared/ApprovalPercentContr
 import {
   PencilSquareIcon, PlusIcon, TrashIcon,
   XMarkIcon, LinkIcon, ChevronDownIcon, Bars3Icon,
-  CalendarDaysIcon, TableCellsIcon, SparklesIcon,
+  CalendarDaysIcon, TableCellsIcon, PuzzlePieceIcon,
 } from '@heroicons/react/24/outline'
-import { SparklesIcon as SparklesSolidIcon } from '@heroicons/react/24/solid'
+import { PuzzlePieceIcon as PuzzlePieceSolidIcon } from '@heroicons/react/24/solid'
 import { sectionTotalHours, sectionTotalCost, totalRoleHours, grandTotalHours, grandTotalCost, formatNumber } from './lib/calculations'
 import { useDragReorder } from './hooks/useDragReorder'
 import type { SectionType, Breakpoint } from './types'
@@ -249,8 +249,8 @@ function App() {
                           }`}
                         >
                           {section.optional
-                            ? <SparklesSolidIcon className="w-4 h-4" />
-                            : <SparklesIcon className="w-4 h-4" />}
+                            ? <PuzzlePieceSolidIcon className="w-4 h-4" />
+                            : <PuzzlePieceIcon className="w-4 h-4" />}
                         </button>
                         <span className="text-xs text-gray-400 shrink-0 tabular-nums">
                           {sectionTotalHours(section)}ч
