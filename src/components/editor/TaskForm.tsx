@@ -1,6 +1,5 @@
 import { useLayoutEffect, useRef } from 'react'
 import { TrashIcon } from '@heroicons/react/24/outline'
-import { PencilIcon } from '@heroicons/react/24/solid'
 import { useStore } from '../../store'
 import type { Task } from '../../types'
 
@@ -79,16 +78,13 @@ export function TaskForm({
       <div className="flex-1 min-w-0">
         {/* Title row */}
         <div className="flex items-center gap-2.5">
-          <div className="group flex flex-1 min-w-0 items-center gap-1.5 px-0.5">
-            <input
-              type="text"
-              value={task.title}
-              onChange={e => updateField({ title: e.target.value })}
-              placeholder="Название задачи"
-              className="flex-1 min-w-0 text-sm font-semibold bg-transparent border-none outline-none focus:ring-0 placeholder:text-gray-400 placeholder:font-semibold"
-            />
-            <PencilIcon className="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-400 transition-colors shrink-0" />
-          </div>
+          <input
+            type="text"
+            value={task.title}
+            onChange={e => updateField({ title: e.target.value })}
+            placeholder="Название задачи"
+            className="flex-1 min-w-0 text-base font-semibold bg-transparent border-none outline-none focus:ring-0 placeholder:text-gray-400 placeholder:font-semibold px-0.5"
+          />
           <button
             type="button"
             onClick={() => dispatch({ type: 'TOGGLE_TASK_OPTIONAL', sectionId, taskId: task.id })}
@@ -117,7 +113,7 @@ export function TaskForm({
             onChange={e => updateField({ description: e.target.value })}
             placeholder="Описание (необязательно)"
             rows={1}
-            className="flex-1 overflow-hidden text-sm px-2.5 py-1.5 rounded-lg border border-gray-200 focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 outline-none transition-all resize-none"
+            className="flex-1 overflow-hidden text-base px-3 py-2 rounded-lg border border-gray-200 focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 outline-none transition-all resize-none"
           />
           <div className="flex gap-1.5 shrink-0 items-start">
             {state.roles.map(role => (
