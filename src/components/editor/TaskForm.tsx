@@ -96,8 +96,8 @@ export function TaskForm({
             title={task.optional ? 'Клиент сможет отключить эту задачу' : 'Сделать задачу отключаемой клиентом'}
             className={`shrink-0 inline-flex items-center px-2 h-6 rounded text-[11px] font-medium transition-colors cursor-pointer border ${
               task.optional
-                ? 'bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200'
-                : 'text-gray-500 hover:text-amber-700 hover:bg-amber-50 border-gray-200 hover:border-amber-200 opacity-0 group-hover/drag:opacity-100'
+                ? 'bg-violet-50 text-violet-700 hover:bg-violet-100 border-violet-200'
+                : 'text-gray-500 hover:text-violet-700 hover:bg-violet-50 border-gray-200 hover:border-violet-200 opacity-0 group-hover/drag:opacity-100'
             }`}
           >
             {task.optional ? 'Опционально' : 'Сделать опц.'}
