@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { UserCircleIcon, BriefcaseIcon } from '@heroicons/react/24/outline'
-import { api, type PublicView } from '../lib/api'
+import { api, type ClientSelections, type PublicView } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { ReadOnlyStoreProvider } from '../store'
+import { EstimateTable } from '../components/preview/EstimateTable'
+import type { ProjectEstimate } from '../types'
 import logoUrl from '../assets/logo.svg'
 
 type Mode = 'gate' | 'client'
@@ -75,7 +78,7 @@ export function ClientView() {
     return <Gate proposalName={data?.proposal.name} onClient={chooseClient} onStaff={chooseStaff} />
   }
 
-  return <ClientReadView data={data} />
+  return <ClientReadView data={data} token={token} />
 }
 
 function Gate({
@@ -139,18 +142,65 @@ function ChoiceCard({
 }
 
 /**
- * Phase-4 minimum: read-only metadata. Real render with optional toggles
- * and XLSX download lands next; this stub at least confirms the gate
- * forwards correctly and the public endpoint is reachable.
+ * Read-only render of the proposal. Optional sections show as toggles
+ * the client can flip — disabled ones drop out of the totals because
+ * EstimateTable already filters !s.disabled. Selections persist to the
+ * server (debounced) so the seller can see what the client picked.
  */
-function ClientReadView({ data }: { data: PublicView | null }) {
-  const subtitle = useMemo(() => {
-    if (!data) return null
-    const sectionCount = data.proposal.state.sections.length
-    return `${sectionCount} ${pluralize(sectionCount, 'раздел', 'раздела', 'разделов')}`
+function ClientReadView({ data, token }: { data: PublicView | null; token: string }) {
+  // sectionId → enabled. Missing means "use proposal default" (enabled
+  // unless staff disabled it). False from server means client unchecked.
+  const [overrides, setOverrides] = useState<Record<string, boolean>>({})
+  const initialized = useRef(false)
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Hydrate overrides from server-saved selections on first data arrival.
+  useEffect(() => {
+    if (!data || initialized.current) return
+    initialized.current = true
+    setOverrides({ ...data.selections.sections })
   }, [data])
 
-  if (!data) {
+  // Debounced save back to server when overrides change. Skip the very
+  // first effect run (after hydration above) to avoid bouncing the same
+  // selections back to the server.
+  const saveSeq = useRef(0)
+  useEffect(() => {
+    if (!initialized.current) return
+    saveSeq.current += 1
+    const seq = saveSeq.current
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => {
+      if (seq !== saveSeq.current) return
+      const selections: ClientSelections = { sections: overrides, tasks: {} }
+      api.saveSelections(token, selections).catch(() => { /* offline, retry on next change */ })
+    }, 400)
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current)
+    }
+  }, [overrides, token])
+
+  // Apply client toggles on top of the proposal: an optional section the
+  // client unchecked becomes effectively disabled.
+  const effectiveState: ProjectEstimate | null = useMemo(() => {
+    if (!data) return null
+    return {
+      ...data.proposal.state,
+      sections: data.proposal.state.sections.map(s => {
+        if (!s.optional) return s
+        const explicit = overrides[s.id]
+        if (explicit === false) return { ...s, disabled: true }
+        return { ...s, disabled: false }
+      }),
+    }
+  }, [data, overrides])
+
+  const optionalSections = useMemo(() => {
+    if (!data) return []
+    return data.proposal.state.sections.filter(s => s.optional)
+  }, [data])
+
+  if (!data || !effectiveState) {
     return (
       <main className="min-h-screen flex items-center justify-center text-[14px] text-[var(--color-muted)]">
         Загружаем…
@@ -158,30 +208,64 @@ function ClientReadView({ data }: { data: PublicView | null }) {
     )
   }
 
+  function isOn(sectionId: string): boolean {
+    const explicit = overrides[sectionId]
+    if (explicit === false) return false
+    return true
+  }
+
   return (
-    <main className="min-h-screen bg-[#f5f5f5]">
-      <header className="bg-white border-b border-[var(--color-border)] px-8 h-12 flex items-center">
-        <img src={logoUrl} alt="uxart" className="h-6 w-auto" />
-        <div className="ml-6 min-w-0">
-          <div className="text-[14px] font-semibold truncate">{data.proposal.name}</div>
-          {subtitle && <div className="text-[11px] text-[var(--color-muted)]">{subtitle}</div>}
+    <ReadOnlyStoreProvider state={effectiveState} proposalId={data.proposal.id}>
+      <main className="min-h-screen bg-[#f5f5f5] flex flex-col">
+        <header className="bg-white border-b border-[var(--color-border)] px-8 h-12 flex items-center sticky top-0 z-10">
+          <img src={logoUrl} alt="uxart" className="h-6 w-auto" />
+          <div className="ml-6 min-w-0">
+            <div className="text-[14px] font-semibold truncate">{data.proposal.name}</div>
+          </div>
+        </header>
+
+        <div className="flex-1 px-4 md:px-8 py-6 space-y-5">
+          {optionalSections.length > 0 && (
+            <section className="max-w-[880px] mx-auto">
+              <div className="text-[11px] uppercase tracking-wide text-[var(--color-muted)] font-semibold mb-2">
+                Опциональные разделы
+              </div>
+              <div className="bg-white border border-[var(--color-border)] rounded-xl p-3 flex flex-wrap gap-2">
+                {optionalSections.map(s => {
+                  const on = isOn(s.id)
+                  return (
+                    <label
+                      key={s.id}
+                      className={`inline-flex items-center gap-2 px-3 h-9 rounded-lg border cursor-pointer transition-colors ${
+                        on
+                          ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
+                          : 'bg-[var(--color-row-even)] border-[var(--color-border)] text-[var(--color-muted)]'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={on}
+                        onChange={() =>
+                          setOverrides(prev => ({ ...prev, [s.id]: !on }))
+                        }
+                        className="accent-indigo-500"
+                      />
+                      <span className="text-[13px] font-medium">{s.name || 'Раздел без названия'}</span>
+                    </label>
+                  )
+                })}
+              </div>
+            </section>
+          )}
+
+          <section>
+            <div className="bg-white border border-[var(--color-border)] rounded-xl p-4 lg:p-6 overflow-x-auto">
+              <EstimateTable />
+            </div>
+          </section>
         </div>
-      </header>
-      <div className="px-8 py-8 max-w-[880px] mx-auto">
-        <div className="text-[13px] text-[var(--color-muted)]">
-          Read-only render будет в следующей итерации (таблица оценки, тумблеры
-          опциональных разделов, скачать .xlsx). Бэкенд уже отдаёт данные.
-        </div>
-      </div>
-    </main>
+      </main>
+    </ReadOnlyStoreProvider>
   )
 }
 
-function pluralize(n: number, one: string, few: string, many: string): string {
-  const mod100 = n % 100
-  const mod10 = n % 10
-  if (mod100 >= 11 && mod100 <= 14) return many
-  if (mod10 === 1) return one
-  if (mod10 >= 2 && mod10 <= 4) return few
-  return many
-}

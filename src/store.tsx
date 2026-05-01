@@ -754,3 +754,24 @@ export function StoreProvider({ proposalId, children }: { proposalId: string; ch
 export function useStore() {
   return useContext(StoreContext)
 }
+
+/**
+ * Read-only context provider for the client share view: feeds the same
+ * StoreContext that EstimateTable & co. consume, but with a no-op
+ * dispatch — any action a child component might fire is silently dropped.
+ */
+export function ReadOnlyStoreProvider({
+  state,
+  proposalId,
+  children,
+}: {
+  state: ProjectEstimate
+  proposalId: string
+  children: ReactNode
+}) {
+  return (
+    <StoreContext.Provider value={{ state, dispatch: () => undefined, proposalId }}>
+      {children}
+    </StoreContext.Provider>
+  )
+}
