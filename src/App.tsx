@@ -270,6 +270,9 @@ function App() {
                     )
                 )}
                 <span className="flex-1 truncate font-medium">{section.name || 'Без названия'}</span>
+                <span className={`text-xs shrink-0 tabular-nums font-medium ${!isEditor ? 'w-9 text-right' : ''} ${isActive ? 'text-white/60' : 'text-gray-400'}`}>
+                  {sectionTotalHours(section)}ч
+                </span>
                 {!isEditor && section.optional && (
                   <button
                     type="button"
@@ -280,7 +283,7 @@ function App() {
                       dispatch({ type: 'TOGGLE_SECTION_DISABLED', id: section.id })
                     }}
                     title={section.disabled ? 'Включить раздел' : 'Отключить раздел'}
-                    className={`shrink-0 relative inline-flex items-center w-7 h-4 rounded-full transition-colors cursor-pointer ${
+                    className={`shrink-0 ml-1 relative inline-flex items-center w-7 h-4 rounded-full transition-colors cursor-pointer ${
                       section.disabled ? 'bg-gray-300' : 'bg-indigo-500'
                     }`}
                   >
@@ -291,9 +294,6 @@ function App() {
                     />
                   </button>
                 )}
-                <span className={`text-xs shrink-0 tabular-nums font-medium ${isActive ? 'text-white/60' : 'text-[var(--color-muted)]'}`}>
-                  {sectionTotalHours(section)}ч
-                </span>
               </div>
             )
           })}

@@ -2,8 +2,19 @@
 import { createContext, useContext, useReducer, useEffect, useRef, type ReactNode } from 'react'
 import type { ProjectEstimate, Role, Section, Task, SectionType, Breakpoint, RoadmapSettings } from './types'
 
-export const SERVER_URL = import.meta.env?.VITE_MCP_SERVER_URL || 'http://localhost:24880'
-const WS_URL = SERVER_URL.replace(/^http/, 'ws') + '/ws'
+// Empty string in dev — Vite proxies /api and /ws to the mcp-server, so the
+// frontend talks to its own origin and cookies stay same-origin. In prod the
+// build runs with VITE_MCP_SERVER_URL=https://api.kp.darlingdesign.pro
+// (Dockerfile arg), and SERVER_URL becomes that absolute URL.
+export const SERVER_URL: string = import.meta.env?.VITE_MCP_SERVER_URL ?? ''
+
+function wsUrl(): string {
+  if (SERVER_URL) return SERVER_URL.replace(/^http/, 'ws') + '/ws'
+  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  return `${proto}//${window.location.host}/ws`
+}
+
+const WS_URL = wsUrl()
 
 function storageKeyFor(proposalId: string): string {
   return `proposal-${proposalId}`
@@ -648,7 +659,7 @@ export function StoreProvider({ proposalId, children }: { proposalId: string; ch
 
   useEffect(() => {
     let cancelled = false
-    fetch(`${SERVER_URL}/api/proposals/${proposalId}`)
+    fetch(`${SERVER_URL}/api/proposals/${proposalId}`, { credentials: 'include' })
       .then(res => res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`)))
       .then((proposal: { state: ProjectEstimate }) => {
         if (cancelled) return
@@ -720,6 +731,7 @@ export function StoreProvider({ proposalId, children }: { proposalId: string; ch
       putTimerRef.current = null
       fetch(`${SERVER_URL}/api/proposals/${proposalId}`, {
         method: 'PUT',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(state),
       }).catch(() => { /* offline edit; cache stays */ })

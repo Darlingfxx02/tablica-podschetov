@@ -75,7 +75,74 @@ export class ProposalStore {
         selections  TEXT NOT NULL,
         updated_at  INTEGER NOT NULL
       );
+
+      CREATE TABLE IF NOT EXISTS users (
+        id            TEXT PRIMARY KEY,
+        email         TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        created_at    INTEGER NOT NULL,
+        last_login_at INTEGER
+      );
+
+      CREATE TABLE IF NOT EXISTS sessions (
+        token      TEXT PRIMARY KEY,
+        user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        expires_at INTEGER NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
     `)
+  }
+
+  // ── Users ───────────────────────────────────────────────────────────────
+  createUser(email: string, passwordHash: string): { id: string; email: string } {
+    const id = 'u_' + this.randomBase36(8)
+    const now = Date.now()
+    this.db
+      .prepare('INSERT INTO users (id, email, password_hash, created_at) VALUES (?, ?, ?, ?)')
+      .run(id, email.toLowerCase(), passwordHash, now)
+    return { id, email: email.toLowerCase() }
+  }
+
+  getUserByEmail(email: string): { id: string; email: string; passwordHash: string } | null {
+    const row = this.db
+      .prepare('SELECT id, email, password_hash FROM users WHERE email = ?')
+      .get(email.toLowerCase()) as { id: string; email: string; password_hash: string } | undefined
+    if (!row) return null
+    return { id: row.id, email: row.email, passwordHash: row.password_hash }
+  }
+
+  touchUserLogin(userId: string): void {
+    this.db.prepare('UPDATE users SET last_login_at = ? WHERE id = ?').run(Date.now(), userId)
+  }
+
+  // ── Sessions ────────────────────────────────────────────────────────────
+  createSession(userId: string, token: string, ttlMs: number): void {
+    const now = Date.now()
+    this.db
+      .prepare('INSERT INTO sessions (token, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)')
+      .run(token, userId, now + ttlMs, now)
+  }
+
+  getSession(token: string): { userId: string; userEmail: string; expiresAt: number } | null {
+    const row = this.db
+      .prepare(`
+        SELECT s.user_id AS user_id, s.expires_at AS expires_at, u.email AS email
+        FROM sessions s JOIN users u ON u.id = s.user_id
+        WHERE s.token = ?
+      `)
+      .get(token) as { user_id: string; expires_at: number; email: string } | undefined
+    if (!row) return null
+    return { userId: row.user_id, userEmail: row.email, expiresAt: row.expires_at }
+  }
+
+  deleteSession(token: string): void {
+    this.db.prepare('DELETE FROM sessions WHERE token = ?').run(token)
+  }
+
+  /** Background-safe — drops every expired row, idempotent. */
+  pruneExpiredSessions(): void {
+    this.db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(Date.now())
   }
 
   list(includeArchived = false): ProposalMeta[] {

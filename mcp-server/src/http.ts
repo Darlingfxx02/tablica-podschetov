@@ -5,6 +5,19 @@ import { WebSocketServer, WebSocket } from 'ws'
 import type { ProposalStore } from './store.js'
 import type { Action } from './reducer.js'
 import type { ClientSelections, Proposal } from './types.js'
+import {
+  hashPassword,
+  verifyPassword,
+  randomToken,
+  makeAuthMiddleware,
+  requireAuth,
+  buildSessionCookie,
+  buildClearCookie,
+  isEmailish,
+  isPasswordOk,
+  SESSION_TTL_MS_VALUE,
+  type AuthRequest,
+} from './auth.js'
 
 /** What we expose on the public client endpoint — token is intentionally stripped. */
 function publicView(p: Proposal, selections: ClientSelections) {
@@ -22,15 +35,94 @@ function publicView(p: Proposal, selections: ClientSelections) {
 
 export function startHttpServer(store: ProposalStore, port: number) {
   const app = express()
-  app.use(cors())
+
+  // CORS: allow specific origins with credentials so the cookie flows from
+  // kp.darlingdesign.pro → api.kp.darlingdesign.pro. Reflection-style origin
+  // check is fine here — only the configured prod hosts and localhost dev
+  // ports get through. Add new origins via ALLOWED_ORIGINS env (comma list).
+  const defaultOrigins = [
+    'https://kp.darlingdesign.pro',
+    'http://localhost:5173',
+    'http://localhost:5181',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:5181',
+  ]
+  const envOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean)
+  const allowedOrigins = new Set([...defaultOrigins, ...envOrigins])
+
+  app.use(cors({
+    origin(origin, cb) {
+      if (!origin) return cb(null, true) // same-origin / curl / health
+      cb(null, allowedOrigins.has(origin))
+    },
+    credentials: true,
+  }))
   app.use(express.json({ limit: '10mb' }))
+  app.use(makeAuthMiddleware(store))
+
+  // Periodic session sweep — cheap, every hour.
+  setInterval(() => {
+    try { store.pruneExpiredSessions() } catch { /* ignore */ }
+  }, 60 * 60 * 1000).unref()
 
   // ── Health ────────────────────────────────────────────────────────────────
   app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok' })
   })
 
-  // ── Proposals (admin) ─────────────────────────────────────────────────────
+  // ── Auth ──────────────────────────────────────────────────────────────────
+  app.post('/api/auth/register', async (req: AuthRequest, res) => {
+    const { email, password } = (req.body ?? {}) as { email?: unknown; password?: unknown }
+    if (!isEmailish(email)) return res.status(400).json({ error: 'invalid email' })
+    if (!isPasswordOk(password)) return res.status(400).json({ error: 'password must be 8–256 chars' })
+    if (store.getUserByEmail(email)) return res.status(409).json({ error: 'email already registered' })
+    try {
+      const hash = await hashPassword(password)
+      const user = store.createUser(email, hash)
+      const token = randomToken()
+      store.createSession(user.id, token, SESSION_TTL_MS_VALUE)
+      store.touchUserLogin(user.id)
+      res.setHeader('Set-Cookie', buildSessionCookie(token))
+      res.status(201).json({ id: user.id, email: user.email })
+    } catch (err) {
+      res.status(500).json({ error: String(err) })
+    }
+  })
+
+  app.post('/api/auth/login', async (req: AuthRequest, res) => {
+    const { email, password } = (req.body ?? {}) as { email?: unknown; password?: unknown }
+    if (!isEmailish(email) || typeof password !== 'string') {
+      return res.status(400).json({ error: 'invalid credentials' })
+    }
+    const user = store.getUserByEmail(email)
+    if (!user) return res.status(401).json({ error: 'invalid credentials' })
+    const ok = await verifyPassword(password, user.passwordHash)
+    if (!ok) return res.status(401).json({ error: 'invalid credentials' })
+    const token = randomToken()
+    store.createSession(user.id, token, SESSION_TTL_MS_VALUE)
+    store.touchUserLogin(user.id)
+    res.setHeader('Set-Cookie', buildSessionCookie(token))
+    res.json({ id: user.id, email: user.email })
+  })
+
+  app.post('/api/auth/logout', (req: AuthRequest, res) => {
+    const cookie = req.headers.cookie || ''
+    const match = cookie.match(/(?:^|;\s*)tablica_session=([^;]+)/)
+    if (match) store.deleteSession(match[1])
+    res.setHeader('Set-Cookie', buildClearCookie())
+    res.json({ ok: true })
+  })
+
+  app.get('/api/auth/me', (req: AuthRequest, res) => {
+    if (!req.userId) return res.status(401).json({ error: 'unauthenticated' })
+    res.json({ id: req.userId, email: req.userEmail })
+  })
+
+  // ── Proposals (admin, requires auth) ──────────────────────────────────────
+  app.use('/api/proposals', requireAuth)
+  app.use('/api/state', requireAuth)
+  app.use('/api/action', requireAuth)
+
   app.get('/api/proposals', (req, res) => {
     const includeArchived = req.query.includeArchived === '1' || req.query.includeArchived === 'true'
     res.json(store.list(includeArchived))

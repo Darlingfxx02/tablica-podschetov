@@ -33,6 +33,7 @@ export interface ClientSelections {
 async function jsonFetch<T>(input: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${SERVER_URL}${input}`, {
     ...init,
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
   })
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)

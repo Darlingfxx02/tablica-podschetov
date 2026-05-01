@@ -6,6 +6,7 @@ import {
 import { PuzzlePieceIcon as PuzzlePieceSolidIcon } from '@heroicons/react/24/solid'
 import { useUiSettings, type OptionalDisplay } from '../lib/uiSettings'
 import { SidebarPortal } from '../components/AppLayout'
+import { useAuth } from '../lib/auth'
 
 type CategoryId = 'appearance'
 
@@ -68,6 +69,7 @@ function Sidebar({
 
 function AppearanceSettings() {
   const { settings, patch } = useUiSettings()
+  const { user, logout } = useAuth()
 
   return (
     <div className="max-w-2xl space-y-8">
@@ -80,6 +82,21 @@ function AppearanceSettings() {
           onChange={(v) => patch({ optionalDisplay: v })}
         />
       </SettingRow>
+
+      {user && (
+        <SettingRow
+          title="Аккаунт"
+          description={user.email}
+        >
+          <button
+            type="button"
+            onClick={() => void logout()}
+            className="h-9 px-3 rounded-lg border border-[var(--color-border)] text-[13px] font-medium text-[#202020] hover:bg-[var(--color-row-even)] transition-colors cursor-pointer"
+          >
+            Выйти из аккаунта
+          </button>
+        </SettingRow>
+      )}
     </div>
   )
 }
