@@ -79,8 +79,6 @@ export function LoginPage() {
               value={password}
               onChange={setPassword}
               required
-              minLength={8}
-              hint={mode === 'register' ? 'Минимум 8 символов.' : undefined}
             />
 
             {error && (
@@ -130,7 +128,7 @@ export function LoginPage() {
 }
 
 function Field({
-  label, type, value, onChange, autoComplete, required, minLength, hint,
+  label, type, value, onChange, autoComplete, required,
 }: {
   label: string
   type: 'email' | 'password'
@@ -138,8 +136,6 @@ function Field({
   onChange: (v: string) => void
   autoComplete?: string
   required?: boolean
-  minLength?: number
-  hint?: string
 }) {
   return (
     <label className="block">
@@ -150,10 +146,8 @@ function Field({
         onChange={(e) => onChange(e.target.value)}
         autoComplete={autoComplete}
         required={required}
-        minLength={minLength}
         className="w-full h-10 px-3 rounded-lg border border-[var(--color-border)] bg-white text-[14px] focus:border-[#6366f1] focus:ring-2 focus:ring-[#6366f1]/15 outline-none transition-colors"
       />
-      {hint && <span className="text-[11px] text-[var(--color-muted)] block mt-1">{hint}</span>}
     </label>
   )
 }
