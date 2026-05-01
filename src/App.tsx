@@ -234,7 +234,7 @@ function App() {
                                 : 'text-indigo-500 hover:text-indigo-600'
                             }`}
                           >
-                            <LinkIcon className="w-3 h-3" />
+                            <LinkIcon className="w-4 h-4" />
                           </button>
                         )}
                         <span className="flex-1 truncate">{section.name || 'Без названия'}</span>
@@ -249,17 +249,17 @@ function App() {
                           }`}
                         >
                           {section.optional
-                            ? <SparklesSolidIcon className="w-3 h-3" />
-                            : <SparklesIcon className="w-3 h-3" />}
+                            ? <SparklesSolidIcon className="w-4 h-4" />
+                            : <SparklesIcon className="w-4 h-4" />}
                         </button>
-                        <span className="text-[10px] text-gray-400 shrink-0">
+                        <span className="text-xs text-gray-400 shrink-0 tabular-nums">
                           {sectionTotalHours(section)}ч
                         </span>
                         <button
                           onClick={e => { e.stopPropagation(); dispatch({ type: 'REMOVE_SECTION', id: section.id }) }}
                           className="hidden group-hover:flex p-0.5 text-gray-400 hover:text-red-500 cursor-pointer shrink-0"
                         >
-                          <TrashIcon className="w-3 h-3" />
+                          <TrashIcon className="w-4 h-4" />
                         </button>
                       </div>
                     )
@@ -278,7 +278,7 @@ function App() {
                     </div>
                     <div className="flex items-baseline gap-1 mt-1">
                       <span className="text-base font-bold text-dark">{formatNumber(grandTotalCost(state))}</span>
-                      <span className="text-[10px] text-gray-400">руб.</span>
+                      <span className="text-xs text-gray-400">руб.</span>
                     </div>
                   </div>
                 )}
