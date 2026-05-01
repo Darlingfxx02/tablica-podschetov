@@ -10,13 +10,10 @@ type Mode = 'gate' | 'client'
 /**
  * /c/:token — single entry the share link points at.
  *
- * Auth check first: a logged-in staff member lands straight on the
- * editor for this proposal, no gate. A guest sees a two-card pick:
- * «Я клиент» renders the read-only preview, «Я сотрудник» bounces to
- * /login (with a return URL to /p/:id) — the login form has a switch
- * to the register tab if they don't have an account yet.
- *
- * The gate appears every visit for guests; no localStorage shortcut.
+ * The gate is always shown: even an authed staff member who opens the
+ * share link gets the choice (so they can preview what their client
+ * sees). «Я клиент» → read-only preview. «Я сотрудник» → /p/:id when
+ * already authed, otherwise /login with a return back to /p/:id.
  */
 export function ClientView() {
   const { token = '' } = useParams<{ token: string }>()
@@ -35,14 +32,6 @@ export function ClientView() {
     return () => { cancelled = true }
   }, [token])
 
-  // Authed staff hitting the share link → straight to the editor for
-  // this proposal. Skip the gate entirely.
-  useEffect(() => {
-    if (authState.status !== 'authed') return
-    if (!data) return
-    navigate(`/p/${data.proposal.id}`, { replace: true })
-  }, [authState.status, data, navigate])
-
   function chooseClient() {
     setMode('client')
   }
@@ -50,6 +39,10 @@ export function ClientView() {
   function chooseStaff() {
     const proposalId = data?.proposal.id
     const returnTo = proposalId ? `/p/${proposalId}` : '/'
+    if (authState.status === 'authed') {
+      navigate(returnTo)
+      return
+    }
     navigate(`/login?return=${encodeURIComponent(returnTo)}`)
   }
 
