@@ -21,15 +21,15 @@ export function sectionRoleHours(section: Section, roleId: string): number {
 }
 
 export function grandTotalHours(estimate: ProjectEstimate): number {
-  return estimate.sections.reduce((sum, s) => sum + sectionTotalHours(s), 0)
+  return estimate.sections.reduce((sum, s) => s.disabled ? sum : sum + sectionTotalHours(s), 0)
 }
 
 export function grandTotalCost(estimate: ProjectEstimate): number {
-  return estimate.sections.reduce((sum, s) => sum + sectionTotalCost(s, estimate.roles), 0)
+  return estimate.sections.reduce((sum, s) => s.disabled ? sum : sum + sectionTotalCost(s, estimate.roles), 0)
 }
 
 export function totalRoleHours(estimate: ProjectEstimate, roleId: string): number {
-  return estimate.sections.reduce((sum, s) => sum + sectionRoleHours(s, roleId), 0)
+  return estimate.sections.reduce((sum, s) => s.disabled ? sum : sum + sectionRoleHours(s, roleId), 0)
 }
 
 export function formatNumber(n: number): string {

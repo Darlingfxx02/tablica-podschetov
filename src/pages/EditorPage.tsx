@@ -33,17 +33,17 @@ export function EditorPage() {
 
 function Loading() {
   return (
-    <div className="min-h-screen flex items-center justify-center text-[15px] text-[var(--color-muted)]">
+    <main className="flex-1 min-w-0 flex items-center justify-center text-[15px] text-[var(--color-muted)]">
       Загружаем…
-    </div>
+    </main>
   )
 }
 
 function NotFound({ message }: { message?: string }) {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-3 text-[15px] text-[var(--color-muted)]">
+    <main className="flex-1 min-w-0 flex flex-col items-center justify-center gap-3 text-[15px] text-[var(--color-muted)]">
       <div>КП не найдено{message ? `: ${message}` : ''}</div>
       <Link to="/" className="text-[#6366f1] hover:underline">← На дэшборд</Link>
-    </div>
+    </main>
   )
 }

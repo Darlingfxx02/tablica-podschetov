@@ -52,7 +52,11 @@ function stickyTopStyle(row: 0 | 1): React.CSSProperties {
 export function RoadmapTable() {
   const { state } = useStore()
   const settings = getSettings(state.roadmapSettings)
-  const { rows, months } = useMemo(() => generateRoadmap(state), [state])
+  const filteredState = useMemo(
+    () => ({ ...state, sections: state.sections.filter(s => !s.disabled) }),
+    [state],
+  )
+  const { rows, months } = useMemo(() => generateRoadmap(filteredState), [filteredState])
 
   if (state.sections.length === 0) {
     return (

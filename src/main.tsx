@@ -6,15 +6,18 @@ import { Dashboard } from './pages/Dashboard'
 import { EditorPage } from './pages/EditorPage'
 import { ClientView } from './pages/ClientView'
 import { SettingsPage } from './pages/SettingsPage'
+import { AppLayout } from './components/AppLayout'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/p/:id" element={<EditorPage />} />
+        <Route element={<AppLayout />}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/p/:id" element={<EditorPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+        </Route>
         <Route path="/c/:token" element={<ClientView />} />
-        <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

@@ -30,7 +30,8 @@ const CELL_DARK = 'border border-dark px-1.5 py-0.5'
 
 export function EstimateTable() {
   const { state } = useStore()
-  const { roles, sections, contact } = state
+  const { roles, contact } = state
+  const sections = state.sections.filter(s => !s.disabled)
 
   if (sections.length === 0 && roles.length === 0) {
     return (

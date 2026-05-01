@@ -35,6 +35,7 @@ export interface Section {
   tasks: Task[]
   breakpoints?: Breakpoint[]
   optional?: boolean
+  disabled?: boolean
 }
 
 export interface ContactInfo {

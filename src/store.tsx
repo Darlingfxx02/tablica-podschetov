@@ -9,7 +9,7 @@ function storageKeyFor(proposalId: string): string {
   return `proposal-${proposalId}`
 }
 
-const ROLE_COLORS = [
+export const ROLE_COLORS = [
   '#6366f1', // indigo
   '#f59e0b', // amber
   '#10b981', // emerald
@@ -72,11 +72,12 @@ type Action =
   | { type: 'UPDATE_SECTION_NAME'; id: string; name: string }
   | { type: 'TOGGLE_SECTION_LINK'; id: string }
   | { type: 'TOGGLE_SECTION_OPTIONAL'; id: string }
+  | { type: 'TOGGLE_SECTION_DISABLED'; id: string }
   | { type: 'TOGGLE_TASK_OPTIONAL'; sectionId: string; taskId: string }
   | { type: 'REMOVE_SECTION'; id: string }
   | { type: 'MOVE_SECTION'; id: string; direction: 'up' | 'down' }
   | { type: 'REORDER_SECTION'; fromId: string; toId: string }
-  | { type: 'ADD_TASK'; sectionId: string }
+  | { type: 'ADD_TASK'; sectionId: string; afterTaskId?: string }
   | { type: 'ADD_DIVIDER'; sectionId: string }
   | { type: 'UPDATE_TASK'; sectionId: string; task: Task }
   | { type: 'REMOVE_TASK'; sectionId: string; taskId: string }
@@ -305,6 +306,23 @@ function reducerInner(state: ProjectEstimate, action: Action): ProjectEstimate {
       }
     }
 
+    case 'TOGGLE_SECTION_DISABLED': {
+      const target = state.sections.find(s => s.id === action.id)
+      if (!target) return state
+      const next = !target.disabled
+      const synced = !!target.linkedGroupId && !target.linkBroken
+      return {
+        ...state,
+        sections: state.sections.map(s => {
+          if (s.id === action.id) return { ...s, disabled: next }
+          if (synced && target.linkedGroupId && s.linkedGroupId === target.linkedGroupId) {
+            return { ...s, disabled: next }
+          }
+          return s
+        }),
+      }
+    }
+
     case 'TOGGLE_TASK_OPTIONAL': {
       const target = state.sections.find(s => s.id === action.sectionId)
       const oldTask = target?.tasks.find(t => t.id === action.taskId)
@@ -343,13 +361,47 @@ function reducerInner(state: ProjectEstimate, action: Action): ProjectEstimate {
     }
 
     case 'REORDER_SECTION': {
-      const fromIdx = state.sections.findIndex(s => s.id === action.fromId)
-      const toIdx = state.sections.findIndex(s => s.id === action.toId)
-      if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return state
-      const sections = [...state.sections]
-      const [moved] = sections.splice(fromIdx, 1)
-      sections.splice(toIdx, 0, moved)
-      return { ...state, sections }
+      const fromSection = state.sections.find(s => s.id === action.fromId)
+      const toSection = state.sections.find(s => s.id === action.toId)
+      if (!fromSection || !toSection || fromSection.id === toSection.id) return state
+
+      const fromGroupId = fromSection.linkedGroupId && !fromSection.linkBroken
+        ? fromSection.linkedGroupId
+        : null
+      const toGroupId = toSection.linkedGroupId && !toSection.linkBroken
+        ? toSection.linkedGroupId
+        : null
+      if (fromGroupId && fromGroupId === toGroupId) return state
+
+      const movingIds = new Set(
+        fromGroupId
+          ? state.sections.filter(s => s.linkedGroupId === fromGroupId).map(s => s.id)
+          : [fromSection.id],
+      )
+      const targetIds = new Set(
+        toGroupId
+          ? state.sections.filter(s => s.linkedGroupId === toGroupId).map(s => s.id)
+          : [toSection.id],
+      )
+
+      const fromFirstIdx = state.sections.findIndex(s => movingIds.has(s.id))
+      const toFirstIdx = state.sections.findIndex(s => targetIds.has(s.id))
+
+      const movingItems = state.sections.filter(s => movingIds.has(s.id))
+      const remaining = state.sections.filter(s => !movingIds.has(s.id))
+
+      let insertIdx: number
+      if (fromFirstIdx < toFirstIdx) {
+        let lastTarget = -1
+        remaining.forEach((s, i) => { if (targetIds.has(s.id)) lastTarget = i })
+        insertIdx = lastTarget + 1
+      } else {
+        const firstTarget = remaining.findIndex(s => targetIds.has(s.id))
+        insertIdx = firstTarget === -1 ? 0 : firstTarget
+      }
+
+      remaining.splice(insertIdx, 0, ...movingItems)
+      return { ...state, sections: remaining }
     }
 
     case 'ADD_TASK': {
@@ -364,20 +416,41 @@ function reducerInner(state: ProjectEstimate, action: Action): ProjectEstimate {
         description: '',
         hours: {},
       }
+      const anchorTask = action.afterTaskId
+        ? target.tasks.find(t => t.id === action.afterTaskId)
+        : null
+      const anchorLinkId = anchorTask?.linkId
+      function endOfGroup(tasks: Task[], dividerIdx: number): number {
+        for (let i = dividerIdx + 1; i < tasks.length; i++) {
+          if (tasks[i].isDivider) return i
+        }
+        return tasks.length
+      }
       return {
         ...state,
         sections: state.sections.map(s => {
           if (s.id === action.sectionId) {
+            if (anchorTask) {
+              const dividerIdx = s.tasks.findIndex(t => t.id === anchorTask.id)
+              const insertAt = endOfGroup(s.tasks, dividerIdx)
+              const next = [...s.tasks]
+              next.splice(insertAt, 0, newTask)
+              return { ...s, tasks: next }
+            }
             return { ...s, tasks: [...s.tasks, newTask] }
           }
           if (synced && linkId && target.linkedGroupId && s.linkedGroupId === target.linkedGroupId) {
-            return {
-              ...s,
-              tasks: [
-                ...s.tasks,
-                { id: generateId(), linkId, title: '', description: '', hours: {} },
-              ],
+            const linkedTask: Task = { id: generateId(), linkId, title: '', description: '', hours: {} }
+            if (anchorLinkId) {
+              const dividerIdx = s.tasks.findIndex(t => t.linkId === anchorLinkId)
+              if (dividerIdx !== -1) {
+                const insertAt = endOfGroup(s.tasks, dividerIdx)
+                const next = [...s.tasks]
+                next.splice(insertAt, 0, linkedTask)
+                return { ...s, tasks: next }
+              }
             }
+            return { ...s, tasks: [...s.tasks, linkedTask] }
           }
           return s
         }),

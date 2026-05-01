@@ -5,7 +5,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { PuzzlePieceIcon as PuzzlePieceSolidIcon } from '@heroicons/react/24/solid'
 import { useUiSettings, type OptionalDisplay } from '../lib/uiSettings'
-import { BrandHeader } from '../components/BrandHeader'
+import { SidebarPortal } from '../components/AppLayout'
 
 type CategoryId = 'appearance'
 
@@ -23,9 +23,11 @@ export function SettingsPage() {
   const [activeId, setActiveId] = useState<CategoryId>('appearance')
 
   return (
-    <div className="min-h-screen flex bg-[#f5f5f5] text-[#202020]">
-      <Sidebar activeId={activeId} onChange={setActiveId} />
-      <main className="flex-1 min-w-0 px-10 py-8">
+    <>
+      <SidebarPortal>
+        <Sidebar activeId={activeId} onChange={setActiveId} />
+      </SidebarPortal>
+      <main className="flex-1 min-w-0 px-10 py-8 overflow-y-auto">
         <header className="mb-6">
           <h1 className="text-[24px] font-semibold leading-tight">
             {CATEGORIES.find(c => c.id === activeId)?.label}
@@ -33,7 +35,7 @@ export function SettingsPage() {
         </header>
         {activeId === 'appearance' && <AppearanceSettings />}
       </main>
-    </div>
+    </>
   )
 }
 
@@ -45,26 +47,22 @@ function Sidebar({
   onChange: (id: CategoryId) => void
 }) {
   return (
-    <aside className="w-[260px] shrink-0 border-r border-[var(--color-border)] bg-white flex flex-col">
-      <BrandHeader />
-
-      <nav className="px-2 flex-1 space-y-0.5">
-        {CATEGORIES.map(c => (
-          <button
-            key={c.id}
-            onClick={() => onChange(c.id)}
-            className={`w-full flex items-center gap-2.5 h-9 px-3 rounded-lg text-[13px] font-medium transition-colors cursor-pointer ${
-              activeId === c.id
-                ? 'bg-[#202020] text-white'
-                : 'text-[#202020] hover:bg-[var(--color-row-even)]'
-            }`}
-          >
-            <span className={activeId === c.id ? '' : 'text-[var(--color-muted)]'}>{c.icon}</span>
-            <span className="flex-1 text-left">{c.label}</span>
-          </button>
-        ))}
-      </nav>
-    </aside>
+    <nav className="px-2 flex-1 space-y-0.5">
+      {CATEGORIES.map(c => (
+        <button
+          key={c.id}
+          onClick={() => onChange(c.id)}
+          className={`w-full flex items-center gap-2.5 h-9 px-3 rounded-lg text-[13px] font-medium transition-colors cursor-pointer ${
+            activeId === c.id
+              ? 'bg-[#202020] text-white'
+              : 'text-[#202020] hover:bg-[var(--color-row-even)]'
+          }`}
+        >
+          <span className={activeId === c.id ? '' : 'text-[var(--color-muted)]'}>{c.icon}</span>
+          <span className="flex-1 text-left">{c.label}</span>
+        </button>
+      ))}
+    </nav>
   )
 }
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useStore, createEmptyRole } from './store'
+import { useStore, createEmptyRole, ROLE_COLORS } from './store'
 import { EstimateTable } from './components/preview/EstimateTable'
 import { RoadmapTable } from './components/preview/RoadmapTable'
 import { RoadmapSettingsPanel } from './components/editor/RoadmapSettings'
@@ -7,7 +7,7 @@ import { ExportButton } from './components/ExportButton'
 import { ImportButton } from './components/ImportButton'
 import { TaskForm } from './components/editor/TaskForm'
 import { ApprovalPercentControl } from './components/shared/ApprovalPercentControl'
-import { BrandHeader } from './components/BrandHeader'
+import { SidebarPortal } from './components/AppLayout'
 import {
   PencilSquareIcon, PlusIcon, TrashIcon,
   XMarkIcon, LinkIcon, ChevronDownIcon,
@@ -114,7 +114,21 @@ function App() {
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null)
   const [rolesCollapsed, setRolesCollapsed] = useState(false)
   const [sectionMenu, setSectionMenu] = useState<{ id: string; x: number; y: number } | null>(null)
+  const [linkHintVisible, setLinkHintVisible] = useState(false)
+  const linkHintTimerRef = useRef<number | null>(null)
   const { settings: uiSettings } = useUiSettings()
+
+  function showLinkHint() {
+    if (linkHintTimerRef.current) window.clearTimeout(linkHintTimerRef.current)
+    linkHintTimerRef.current = window.setTimeout(() => setLinkHintVisible(true), 500)
+  }
+  function hideLinkHint() {
+    if (linkHintTimerRef.current) {
+      window.clearTimeout(linkHintTimerRef.current)
+      linkHintTimerRef.current = null
+    }
+    setLinkHintVisible(false)
+  }
 
   useEffect(() => {
     if (!sectionMenu) return
@@ -146,6 +160,18 @@ function App() {
   const activeSection = state.sections.find(s => s.id === resolvedActiveSectionId) || null
   const editingRole = state.roles.find(r => r.id === editingRoleId) || null
 
+  const linkGroupColors = (() => {
+    const map = new Map<string, string>()
+    let i = 0
+    for (const s of state.sections) {
+      if (s.linkedGroupId && !map.has(s.linkedGroupId)) {
+        map.set(s.linkedGroupId, ROLE_COLORS[i % ROLE_COLORS.length])
+        i++
+      }
+    }
+    return map
+  })()
+
   const TabButton = ({ tab, icon, label }: { tab: 'editor' | 'preview' | 'roadmap'; icon: React.ReactNode; label: string }) => (
     <button
       onClick={() => setActiveTab(tab)}
@@ -159,11 +185,9 @@ function App() {
   )
 
   return (
-    <div className="h-screen flex bg-[#f5f5f5] overflow-hidden">
-      {/* Sidebar */}
-      <aside className="w-[260px] shrink-0 bg-white border-r border-[var(--color-border)] flex flex-col overflow-hidden">
-        <BrandHeader />
-
+    <>
+      {/* Sidebar (portaled into AppLayout's persistent aside) */}
+      <SidebarPortal>
         {activeTab === 'editor' && (
           <div className="px-3 pt-2 pb-2 flex items-center justify-between">
             <span className="text-[11px] uppercase tracking-wide text-[var(--color-muted)] font-semibold px-2">Блоки работ</span>
@@ -174,7 +198,7 @@ function App() {
           {state.sections.map((section) => {
             const isEditor = activeTab === 'editor'
             const isActive = isEditor && resolvedActiveSectionId === section.id
-            const isDimmed = section.disabled
+            const isDimmed = !isEditor && section.disabled
             const dragProps = isEditor ? sectionDrag.dragHandleProps(section.id) : {}
             return (
               <div
@@ -206,62 +230,66 @@ function App() {
                       dispatch({ type: 'TOGGLE_SECTION_LINK', id: section.id })
                     }}
                     title={section.linkBroken ? 'Связь разорвана — нажмите, чтобы снова синхронизировать' : 'Блоки синхронизированы — нажмите, чтобы разорвать связь'}
+                    style={!section.linkBroken
+                      ? {
+                          color: isActive
+                            ? `color-mix(in srgb, ${linkGroupColors.get(section.linkedGroupId)} 50%, white)`
+                            : linkGroupColors.get(section.linkedGroupId),
+                        }
+                      : undefined}
                     className={`shrink-0 p-0.5 -m-0.5 rounded transition-colors cursor-pointer ${
-                      isActive
-                        ? section.linkBroken
+                      section.linkBroken
+                        ? isActive
                           ? 'text-white/30 hover:text-white/50'
-                          : 'text-indigo-300 hover:text-indigo-200'
-                        : section.linkBroken
-                          ? 'text-gray-300 hover:text-gray-400'
-                          : 'text-indigo-500 hover:text-indigo-600'
+                          : 'text-gray-300 hover:text-gray-400'
+                        : 'hover:opacity-80'
                     }`}
                   >
                     <LinkIcon className="w-4 h-4" />
                   </button>
                 )}
-                <span className="flex-1 truncate font-medium">{section.name || 'Без названия'}</span>
-                {section.optional && (
-                  isEditor ? (
-                    uiSettings.optionalDisplay === 'pill'
-                      ? (
-                        <span
-                          className={`shrink-0 inline-flex items-center px-1.5 h-5 rounded text-[10px] font-bold leading-none tracking-wide border ${
-                            isActive
-                              ? 'bg-white/10 text-white border-white/20'
-                              : 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                          }`}
-                          title="Клиент сможет отключить этот раздел"
-                        >
-                          опца
-                        </span>
-                      )
-                      : (
-                        <PuzzlePieceSolidIcon
-                          className={`shrink-0 w-4 h-4 ${isActive ? 'text-indigo-300' : 'text-indigo-500'}`}
-                          aria-label="Клиент сможет отключить этот раздел"
-                        />
-                      )
-                  ) : (
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={!section.disabled}
-                      onClick={e => {
-                        e.stopPropagation()
-                        dispatch({ type: 'TOGGLE_SECTION_DISABLED', id: section.id })
-                      }}
-                      title={section.disabled ? 'Включить раздел' : 'Отключить раздел'}
-                      className={`shrink-0 relative inline-flex items-center w-7 h-4 rounded-full transition-colors cursor-pointer ${
-                        section.disabled ? 'bg-gray-300' : 'bg-indigo-500'
-                      }`}
-                    >
+                {isEditor && section.optional && (
+                  uiSettings.optionalDisplay === 'pill'
+                    ? (
                       <span
-                        className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-sm transition-transform ${
-                          section.disabled ? 'translate-x-0.5' : 'translate-x-3.5'
+                        className={`shrink-0 inline-flex items-center px-1.5 h-5 rounded text-[10px] font-bold leading-none tracking-wide border ${
+                          isActive
+                            ? 'bg-white/10 text-white border-white/20'
+                            : 'bg-indigo-50 text-indigo-700 border-indigo-200'
                         }`}
+                        title="Клиент сможет отключить этот раздел"
+                      >
+                        опца
+                      </span>
+                    )
+                    : (
+                      <PuzzlePieceSolidIcon
+                        className={`shrink-0 w-4 h-4 ${isActive ? 'text-indigo-300' : 'text-indigo-500'}`}
+                        aria-label="Клиент сможет отключить этот раздел"
                       />
-                    </button>
-                  )
+                    )
+                )}
+                <span className="flex-1 truncate font-medium">{section.name || 'Без названия'}</span>
+                {!isEditor && section.optional && (
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={!section.disabled}
+                    onClick={e => {
+                      e.stopPropagation()
+                      dispatch({ type: 'TOGGLE_SECTION_DISABLED', id: section.id })
+                    }}
+                    title={section.disabled ? 'Включить раздел' : 'Отключить раздел'}
+                    className={`shrink-0 relative inline-flex items-center w-7 h-4 rounded-full transition-colors cursor-pointer ${
+                      section.disabled ? 'bg-gray-300' : 'bg-indigo-500'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-sm transition-transform ${
+                        section.disabled ? 'translate-x-0.5' : 'translate-x-3.5'
+                      }`}
+                    />
+                  </button>
                 )}
                 <span className={`text-xs shrink-0 tabular-nums font-medium ${isActive ? 'text-white/60' : 'text-[var(--color-muted)]'}`}>
                   {sectionTotalHours(section)}ч
@@ -287,7 +315,7 @@ function App() {
             </div>
           </div>
         )}
-      </aside>
+      </SidebarPortal>
 
       {/* Main canvas */}
       <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
@@ -368,9 +396,9 @@ function App() {
                             <span className="text-lg font-bold text-[#202020] leading-none">
                               {hours}
                             </span>
-                            <span className="text-[10px] text-[var(--color-muted)]">часов</span>
+                            <span className="text-sm text-[var(--color-muted)]">часов</span>
                           </div>
-                          <div className="text-[10px] text-[var(--color-muted)]">
+                          <div className="text-sm text-[var(--color-muted)]">
                             {formatNumber(role.hourlyRate)} ₽/час
                           </div>
                         </div>
@@ -397,20 +425,33 @@ function App() {
                   {/* Section header */}
                   <div className="flex items-center gap-3">
                     {activeSection.linkedGroupId && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          dispatch({ type: 'TOGGLE_SECTION_LINK', id: activeSection.id })
-                        }
-                        title={activeSection.linkBroken ? 'Связь разорвана — нажмите, чтобы снова синхронизировать' : 'Блоки синхронизированы — нажмите, чтобы разорвать связь'}
-                        className={`shrink-0 p-1 -m-1 rounded transition-colors cursor-pointer ${
-                          activeSection.linkBroken
-                            ? 'text-gray-300 hover:text-gray-400'
-                            : 'text-indigo-500 hover:text-indigo-600'
-                        }`}
+                      <div
+                        className="relative shrink-0"
+                        onMouseEnter={() => { if (!activeSection.linkBroken) showLinkHint() }}
+                        onMouseLeave={hideLinkHint}
                       >
-                        <LinkIcon className="w-5 h-5" />
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            dispatch({ type: 'TOGGLE_SECTION_LINK', id: activeSection.id })
+                          }
+                          style={!activeSection.linkBroken
+                            ? { color: linkGroupColors.get(activeSection.linkedGroupId!) }
+                            : undefined}
+                          className={`p-1 -m-1 rounded transition-colors cursor-pointer ${
+                            activeSection.linkBroken
+                              ? 'text-gray-300 hover:text-gray-400'
+                              : 'hover:opacity-80'
+                          }`}
+                        >
+                          <LinkIcon className="w-5 h-5" />
+                        </button>
+                        {linkHintVisible && !activeSection.linkBroken && (
+                          <div className="absolute top-full left-0 mt-2 w-80 text-sm text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2 z-20 shadow-sm pointer-events-none">
+                            Задачи этого блока синхронизированы со связанным блоком — при добавлении, удалении или переименовании задачи они изменяются одновременно в обоих. Нажмите, чтобы разорвать связь.
+                          </div>
+                        )}
+                      </div>
                     )}
                     <input
                       type="text"
@@ -423,7 +464,7 @@ function App() {
                       type="button"
                       onClick={() => dispatch({ type: 'TOGGLE_SECTION_OPTIONAL', id: activeSection.id })}
                       title={activeSection.optional ? 'Клиент сможет отключить этот раздел' : 'Сделать раздел отключаемым клиентом'}
-                      className={`shrink-0 inline-flex items-center px-2.5 h-7 rounded-md text-xs font-medium transition-colors cursor-pointer border ${
+                      className={`shrink-0 inline-flex items-center px-3 h-9 rounded-lg text-sm font-medium transition-colors cursor-pointer border ${
                         activeSection.optional
                           ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-200'
                           : 'text-gray-500 hover:text-indigo-700 hover:bg-indigo-50 border-gray-200 hover:border-indigo-200'
@@ -435,11 +476,6 @@ function App() {
                       {sectionTotalHours(activeSection)} ч / {formatNumber(sectionTotalCost(activeSection, state.roles))} руб.
                     </span>
                   </div>
-                  {activeSection.linkedGroupId && !activeSection.linkBroken && (
-                    <div className="text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
-                      Задачи этого блока синхронизированы со связанным блоком — при добавлении, удалении или переименовании задачи они изменяются одновременно в обоих.
-                    </div>
-                  )}
                   <div className="border-t border-[var(--color-border)]" />
 
                   {activeSection.sectionType === 'adaptive' && (
@@ -648,7 +684,7 @@ function App() {
           </div>
         )
       })()}
-    </div>
+    </>
   )
 }
 

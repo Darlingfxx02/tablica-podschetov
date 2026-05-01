@@ -26,3 +26,7 @@ tmp
 *.njsproj
 *.sln
 *.sw?
+
+# Personal Obsidian vaults — notes, not part of the app
+Tasks_and_Knoledge/
+Таблица подсчётов 13.10.19/

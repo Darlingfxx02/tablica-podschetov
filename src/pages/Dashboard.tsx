@@ -11,7 +11,7 @@ import {
   Squares2X2Icon,
 } from '@heroicons/react/24/outline'
 import { api, publicShareUrl, type ProposalMeta } from '../lib/api'
-import { BrandHeader } from '../components/BrandHeader'
+import { SidebarPortal } from '../components/AppLayout'
 
 type View = 'active' | 'archive'
 
@@ -63,16 +63,18 @@ export function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen flex bg-[#f5f5f5] text-[#202020]">
-      <Sidebar
-        view={view}
-        onViewChange={setView}
-        counts={counts}
-        search={search}
-        onSearch={setSearch}
-        onCreate={handleCreate}
-      />
-      <main className="flex-1 min-w-0 px-10 py-8">
+    <>
+      <SidebarPortal>
+        <Sidebar
+          view={view}
+          onViewChange={setView}
+          counts={counts}
+          search={search}
+          onSearch={setSearch}
+          onCreate={handleCreate}
+        />
+      </SidebarPortal>
+      <main className="flex-1 min-w-0 px-10 py-8 overflow-y-auto">
         <header className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-[24px] font-semibold leading-tight">
@@ -104,7 +106,7 @@ export function Dashboard() {
           onChanged={refresh}
         />
       </main>
-    </div>
+    </>
   )
 }
 
@@ -119,9 +121,7 @@ interface SidebarProps {
 
 function Sidebar({ view, onViewChange, counts, search, onSearch, onCreate }: SidebarProps) {
   return (
-    <aside className="w-[260px] shrink-0 border-r border-[var(--color-border)] bg-white flex flex-col">
-      <BrandHeader />
-
+    <>
       <div className="px-3 pb-3">
         <div className="relative">
           <MagnifyingGlassIcon className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--color-muted)]" />
@@ -159,7 +159,7 @@ function Sidebar({ view, onViewChange, counts, search, onSearch, onCreate }: Sid
           <PlusIcon className="w-4 h-4" /> Новый КП
         </button>
       </div>
-    </aside>
+    </>
   )
 }
 
