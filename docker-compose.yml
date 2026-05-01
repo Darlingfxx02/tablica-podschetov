@@ -1,18 +1,22 @@
-# Coolify deploys this stack as a single application:
-#   web ─→ kp.darlingdesign.pro          (nginx serving the Vite SPA)
-#   api ─→ api.kp.darlingdesign.pro      (Node.js + SQLite multi-proposal API)
+# Deploy on the Windows + WSL host that already runs Coolify's Traefik:
+#   web ─→ kp.darlingdesign.pro
+#   api ─→ api.kp.darlingdesign.pro
 #
-# Domain → service mapping is configured in the Coolify UI; Coolify injects
-# the Traefik labels and Let's Encrypt certs based on those settings.
-# The "expose" port is what Coolify routes to.
+# Traefik labels here mirror the pattern Coolify itself emits, so the
+# containers slot straight into the existing coolify-proxy without any
+# Coolify-UI configuration. The "coolify" external network is the bridge
+# shared by Coolify's proxy and its managed apps; joining it is what makes
+# Traefik discover us.
 #
-# Local docker compose up also works for end-to-end verification:
-#   docker compose up --build
+# Local docker compose up also works for end-to-end verification (the
+# Traefik labels are harmless without a Traefik in front).
 
 services:
   api:
     build:
       context: ./mcp-server
+    networks:
+      - coolify
     expose:
       - "24880"
     volumes:
@@ -25,14 +29,29 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=coolify
+      - traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
+      # http → 301 → https
+      - traefik.http.routers.kp-api-http.entryPoints=http
+      - traefik.http.routers.kp-api-http.rule=Host(`api.kp.darlingdesign.pro`)
+      - traefik.http.routers.kp-api-http.middlewares=redirect-to-https
+      # https
+      - traefik.http.routers.kp-api.entryPoints=https
+      - traefik.http.routers.kp-api.rule=Host(`api.kp.darlingdesign.pro`)
+      - traefik.http.routers.kp-api.tls=true
+      - traefik.http.routers.kp-api.tls.certresolver=letsencrypt
+      - traefik.http.routers.kp-api.service=kp-api
+      - traefik.http.services.kp-api.loadbalancer.server.port=24880
 
   web:
     build:
       context: .
       args:
-        # Coolify can override this in the UI ("Build Variables") if a
-        # different API host is needed for staging or PR previews.
         VITE_MCP_SERVER_URL: https://api.kp.darlingdesign.pro
+    networks:
+      - coolify
     expose:
       - "80"
     depends_on:
@@ -43,6 +62,26 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=coolify
+      - traefik.http.middlewares.gzip.compress=true
+      # http → 301 → https
+      - traefik.http.routers.kp-web-http.entryPoints=http
+      - traefik.http.routers.kp-web-http.rule=Host(`kp.darlingdesign.pro`)
+      - traefik.http.routers.kp-web-http.middlewares=redirect-to-https
+      # https
+      - traefik.http.routers.kp-web.entryPoints=https
+      - traefik.http.routers.kp-web.rule=Host(`kp.darlingdesign.pro`)
+      - traefik.http.routers.kp-web.tls=true
+      - traefik.http.routers.kp-web.tls.certresolver=letsencrypt
+      - traefik.http.routers.kp-web.middlewares=gzip
+      - traefik.http.routers.kp-web.service=kp-web
+      - traefik.http.services.kp-web.loadbalancer.server.port=80
 
 volumes:
   estimate-data:
+
+networks:
+  coolify:
+    external: true
