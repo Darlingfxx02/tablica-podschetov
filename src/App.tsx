@@ -244,8 +244,8 @@ function App() {
                           title={section.optional ? 'Опциональный раздел — клиент сможет отключить' : 'Сделать опциональным (клиент сможет отключить)'}
                           className={`shrink-0 p-0.5 transition-colors cursor-pointer ${
                             section.optional
-                              ? 'text-violet-500 hover:text-violet-600'
-                              : 'text-gray-300 hover:text-violet-500 hidden group-hover:flex'
+                              ? 'text-indigo-500 hover:text-indigo-600'
+                              : 'text-gray-300 hover:text-indigo-500 hidden group-hover:flex'
                           }`}
                         >
                           {section.optional
@@ -396,8 +396,8 @@ function App() {
                           title={activeSection.optional ? 'Клиент сможет отключить этот раздел' : 'Сделать раздел отключаемым клиентом'}
                           className={`shrink-0 inline-flex items-center px-2.5 h-7 rounded-md text-xs font-medium transition-colors cursor-pointer border ${
                             activeSection.optional
-                              ? 'bg-violet-50 text-violet-700 hover:bg-violet-100 border-violet-200'
-                              : 'text-gray-500 hover:text-violet-700 hover:bg-violet-50 border-gray-200 hover:border-violet-200'
+                              ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-200'
+                              : 'text-gray-500 hover:text-indigo-700 hover:bg-indigo-50 border-gray-200 hover:border-indigo-200'
                           }`}
                         >
                           {activeSection.optional ? 'Опционально' : 'Сделать опциональным'}
