@@ -12,7 +12,6 @@ import {
   XMarkIcon, LinkIcon, ChevronDownIcon, Bars3Icon,
   CalendarDaysIcon, TableCellsIcon, PuzzlePieceIcon,
 } from '@heroicons/react/24/outline'
-import { PuzzlePieceIcon as PuzzlePieceSolidIcon } from '@heroicons/react/24/solid'
 import { sectionTotalHours, sectionTotalCost, totalRoleHours, grandTotalHours, grandTotalCost, formatNumber } from './lib/calculations'
 import { useDragReorder } from './hooks/useDragReorder'
 import type { SectionType, Breakpoint } from './types'
@@ -112,6 +111,19 @@ function App() {
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null)
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null)
   const [rolesCollapsed, setRolesCollapsed] = useState(false)
+  const [sectionMenu, setSectionMenu] = useState<{ id: string; x: number; y: number } | null>(null)
+
+  useEffect(() => {
+    if (!sectionMenu) return
+    function onDown() { setSectionMenu(null) }
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setSectionMenu(null) }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [sectionMenu])
   const resolvedActiveSectionId = activeSectionId && state.sections.some(s => s.id === activeSectionId)
     ? activeSectionId
     : state.sections[0]?.id ?? null
@@ -213,12 +225,18 @@ function App() {
                         key={section.id}
                         ref={sectionDrag.itemRef(section.id)}
                         {...sectionDrag.dragHandleProps(section.id)}
-                        className={`group relative flex items-center gap-1 px-3 py-2 rounded-lg text-sm cursor-grab active:cursor-grabbing select-none border font-medium ${
+                        className={`relative flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm cursor-grab active:cursor-grabbing select-none border font-medium ${
                           resolvedActiveSectionId === section.id
                             ? 'bg-white border-gray-200 text-dark'
                             : 'border-transparent text-gray-600 hover:text-dark'
                         } ${sectionDrag.draggingId === section.id ? 'opacity-0 pointer-events-none' : ''}`}
                         onClick={() => setActiveSectionId(section.id)}
+                        onContextMenu={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          setActiveSectionId(section.id)
+                          setSectionMenu({ id: section.id, x: e.clientX, y: e.clientY })
+                        }}
                       >
                         {section.linkedGroupId && (
                           <button
@@ -238,29 +256,17 @@ function App() {
                           </button>
                         )}
                         <span className="flex-1 truncate">{section.name || 'Без названия'}</span>
-                        <button
-                          type="button"
-                          onClick={e => { e.stopPropagation(); dispatch({ type: 'TOGGLE_SECTION_OPTIONAL', id: section.id }) }}
-                          title={section.optional ? 'Опциональный раздел — клиент сможет отключить' : 'Сделать опциональным (клиент сможет отключить)'}
-                          className={`shrink-0 p-0.5 transition-colors cursor-pointer ${
-                            section.optional
-                              ? 'text-indigo-500 hover:text-indigo-600'
-                              : 'text-gray-300 hover:text-indigo-500 hidden group-hover:flex'
-                          }`}
-                        >
-                          {section.optional
-                            ? <PuzzlePieceSolidIcon className="w-4 h-4" />
-                            : <PuzzlePieceIcon className="w-4 h-4" />}
-                        </button>
+                        {section.optional && (
+                          <span
+                            className="shrink-0 inline-flex items-center px-1.5 h-5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-700 border border-indigo-200 leading-none"
+                            title="Клиент сможет отключить этот раздел"
+                          >
+                            опц.
+                          </span>
+                        )}
                         <span className="text-xs text-gray-400 shrink-0 tabular-nums">
                           {sectionTotalHours(section)}ч
                         </span>
-                        <button
-                          onClick={e => { e.stopPropagation(); dispatch({ type: 'REMOVE_SECTION', id: section.id }) }}
-                          className="hidden group-hover:flex p-0.5 text-gray-400 hover:text-red-500 cursor-pointer shrink-0"
-                        >
-                          <TrashIcon className="w-4 h-4" />
-                        </button>
                       </div>
                     )
                   })}
@@ -590,6 +596,46 @@ function App() {
           </div>
         </div>
       )}
+
+      {sectionMenu && (() => {
+        const section = state.sections.find(s => s.id === sectionMenu.id)
+        if (!section) return null
+        const MENU_W = 220
+        const MENU_H = 92
+        const left = Math.min(window.innerWidth - MENU_W - 8, sectionMenu.x)
+        const top = Math.min(window.innerHeight - MENU_H - 8, sectionMenu.y)
+        return (
+          <div
+            className="fixed z-50 bg-white border border-gray-200 rounded-xl shadow-lg py-1 overflow-hidden"
+            style={{ top, left, width: MENU_W }}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                dispatch({ type: 'TOGGLE_SECTION_OPTIONAL', id: section.id })
+                setSectionMenu(null)
+              }}
+              className="w-full flex items-center gap-2 px-3 h-9 text-[13px] text-left text-dark hover:bg-gray-100 cursor-pointer"
+            >
+              <PuzzlePieceIcon className="w-4 h-4 text-gray-400" />
+              {section.optional ? 'Сделать обычным' : 'Сделать опциональным'}
+            </button>
+            <div className="h-px bg-gray-100 mx-2" />
+            <button
+              type="button"
+              onClick={() => {
+                dispatch({ type: 'REMOVE_SECTION', id: section.id })
+                setSectionMenu(null)
+              }}
+              className="w-full flex items-center gap-2 px-3 h-9 text-[13px] text-left text-red-600 hover:bg-red-50 cursor-pointer"
+            >
+              <TrashIcon className="w-4 h-4" />
+              Удалить раздел
+            </button>
+          </div>
+        )
+      })()}
     </div>
   )
 }
