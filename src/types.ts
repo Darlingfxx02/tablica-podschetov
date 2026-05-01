@@ -13,6 +13,7 @@ export interface Task {
   description: string
   hours: Record<string, number>
   isDivider?: boolean
+  optional?: boolean
 }
 
 export type SectionType =
@@ -33,6 +34,7 @@ export interface Section {
   linkBroken?: boolean
   tasks: Task[]
   breakpoints?: Breakpoint[]
+  optional?: boolean
 }
 
 export interface ContactInfo {

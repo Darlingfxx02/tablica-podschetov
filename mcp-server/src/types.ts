@@ -13,6 +13,7 @@ export interface Task {
   description: string
   hours: Record<string, number>
   isDivider?: boolean
+  optional?: boolean
 }
 
 export type SectionType =
@@ -33,6 +34,7 @@ export interface Section {
   linkBroken?: boolean
   tasks: Task[]
   breakpoints?: Breakpoint[]
+  optional?: boolean
 }
 
 export interface ContactInfo {
@@ -64,4 +66,22 @@ export interface ProjectEstimate {
   sections: Section[]
   contact: ContactInfo
   roadmapSettings?: RoadmapSettings
+}
+
+export interface ProposalMeta {
+  id: string
+  name: string
+  publicToken: string
+  createdAt: number
+  updatedAt: number
+  archivedAt?: number
+}
+
+export interface Proposal extends ProposalMeta {
+  state: ProjectEstimate
+}
+
+export interface ClientSelections {
+  sections: Record<string, boolean>
+  tasks: Record<string, boolean>
 }

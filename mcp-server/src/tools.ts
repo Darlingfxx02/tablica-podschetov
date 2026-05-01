@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import type { StateManager } from './state.js'
+import type { StateAdapter } from './store.js'
 import type { ProjectEstimate } from './types.js'
 import {
   grandTotalHours,
@@ -17,7 +17,7 @@ function json(data: unknown) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] }
 }
 
-export function registerTools(server: McpServer, state: StateManager) {
+export function registerTools(server: McpServer, state: StateAdapter) {
   // ── Project ──
 
   server.tool(
