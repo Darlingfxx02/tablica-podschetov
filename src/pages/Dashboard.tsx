@@ -9,6 +9,7 @@ import {
   ArchiveBoxIcon,
   ArrowUturnLeftIcon,
   Squares2X2Icon,
+  Cog6ToothIcon,
 } from '@heroicons/react/24/outline'
 import { api, publicShareUrl, type ProposalMeta } from '../lib/api'
 import logoUrl from '../assets/logo.svg'
@@ -151,6 +152,15 @@ function Sidebar({ view, onViewChange, counts, search, onSearch, onCreate }: Sid
           label="Архив"
           count={counts.archive}
         />
+        <Link
+          to="/settings"
+          className="flex items-center gap-2.5 h-9 px-3 rounded-lg text-[13px] text-[#202020] hover:bg-[var(--color-row-even)] transition-colors"
+        >
+          <span className="text-[var(--color-muted)]">
+            <Cog6ToothIcon className="w-4 h-4" />
+          </span>
+          <span className="flex-1 text-left">Настройки</span>
+        </Link>
       </nav>
 
       <div className="p-3 border-t border-[var(--color-border)]">
