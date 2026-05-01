@@ -175,7 +175,7 @@ function NavItem({
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-2.5 h-9 px-3 rounded-lg text-[13px] transition-colors ${
+      className={`w-full flex items-center gap-2.5 h-9 px-3 rounded-lg text-[13px] font-medium transition-colors ${
         active
           ? 'bg-[#202020] text-white'
           : 'text-[#202020] hover:bg-[var(--color-row-even)]'

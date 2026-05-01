@@ -53,7 +53,7 @@ function Sidebar({
           <button
             key={c.id}
             onClick={() => onChange(c.id)}
-            className={`w-full flex items-center gap-2.5 h-9 px-3 rounded-lg text-[13px] transition-colors cursor-pointer ${
+            className={`w-full flex items-center gap-2.5 h-9 px-3 rounded-lg text-[13px] font-medium transition-colors cursor-pointer ${
               activeId === c.id
                 ? 'bg-[#202020] text-white'
                 : 'text-[#202020] hover:bg-[var(--color-row-even)]'

@@ -164,32 +164,41 @@ function App() {
       <aside className="w-[260px] shrink-0 bg-white border-r border-[var(--color-border)] flex flex-col overflow-hidden">
         <BrandHeader />
 
-        <div className="px-3 pt-2 pb-2 flex items-center justify-between">
-          <span className="text-[11px] uppercase tracking-wide text-[var(--color-muted)] font-medium px-2">Блоки работ</span>
-          <AddSectionDropdown onAdd={type => dispatch({ type: 'ADD_SECTION', sectionType: type })} />
-        </div>
-        <nav className="flex-1 px-2 pb-2 space-y-0.5 overflow-y-auto overscroll-contain">
+        {activeTab === 'editor' && (
+          <div className="px-3 pt-2 pb-2 flex items-center justify-between">
+            <span className="text-[11px] uppercase tracking-wide text-[var(--color-muted)] font-semibold px-2">Блоки работ</span>
+            <AddSectionDropdown onAdd={type => dispatch({ type: 'ADD_SECTION', sectionType: type })} />
+          </div>
+        )}
+        <nav className={`flex-1 px-2 pb-2 space-y-0.5 overflow-y-auto overscroll-contain ${activeTab !== 'editor' ? 'pt-2' : ''}`}>
           {state.sections.map((section) => {
-            const isActive = resolvedActiveSectionId === section.id
+            const isEditor = activeTab === 'editor'
+            const isActive = isEditor && resolvedActiveSectionId === section.id
+            const isDimmed = section.disabled
+            const dragProps = isEditor ? sectionDrag.dragHandleProps(section.id) : {}
             return (
               <div
                 key={section.id}
-                ref={sectionDrag.itemRef(section.id)}
-                {...sectionDrag.dragHandleProps(section.id)}
-                className={`relative flex items-center gap-1.5 px-3 h-9 rounded-lg text-[13px] cursor-grab active:cursor-grabbing select-none transition-colors ${
+                ref={isEditor ? sectionDrag.itemRef(section.id) : undefined}
+                {...dragProps}
+                className={`relative flex items-center gap-1.5 px-3 h-9 rounded-lg text-[13px] select-none transition-colors ${
+                  isEditor ? 'cursor-grab active:cursor-grabbing' : ''
+                } ${
                   isActive
                     ? 'bg-[#202020] text-white'
-                    : 'text-[#202020] hover:bg-[var(--color-row-even)]'
-                } ${sectionDrag.draggingId === section.id ? 'opacity-0 pointer-events-none' : ''}`}
-                onClick={() => setActiveSectionId(section.id)}
-                onContextMenu={(e) => {
+                    : `text-[#202020] ${isEditor ? 'hover:bg-[var(--color-row-even)]' : ''}`
+                } ${isEditor && sectionDrag.draggingId === section.id ? 'opacity-0 pointer-events-none' : ''} ${
+                  isDimmed ? 'opacity-50' : ''
+                }`}
+                onClick={isEditor ? () => setActiveSectionId(section.id) : undefined}
+                onContextMenu={isEditor ? (e) => {
                   e.preventDefault()
                   e.stopPropagation()
                   setActiveSectionId(section.id)
                   setSectionMenu({ id: section.id, x: e.clientX, y: e.clientY })
-                }}
+                } : undefined}
               >
-                {section.linkedGroupId && (
+                {isEditor && section.linkedGroupId && (
                   <button
                     type="button"
                     onClick={e => {
@@ -210,35 +219,57 @@ function App() {
                     <LinkIcon className="w-4 h-4" />
                   </button>
                 )}
-                <span className="flex-1 truncate">{section.name || 'Без названия'}</span>
+                <span className="flex-1 truncate font-medium">{section.name || 'Без названия'}</span>
                 {section.optional && (
-                  uiSettings.optionalDisplay === 'pill'
-                    ? (
+                  isEditor ? (
+                    uiSettings.optionalDisplay === 'pill'
+                      ? (
+                        <span
+                          className={`shrink-0 inline-flex items-center px-1.5 h-5 rounded text-[10px] font-bold leading-none tracking-wide border ${
+                            isActive
+                              ? 'bg-white/10 text-white border-white/20'
+                              : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                          }`}
+                          title="Клиент сможет отключить этот раздел"
+                        >
+                          опца
+                        </span>
+                      )
+                      : (
+                        <PuzzlePieceSolidIcon
+                          className={`shrink-0 w-4 h-4 ${isActive ? 'text-indigo-300' : 'text-indigo-500'}`}
+                          aria-label="Клиент сможет отключить этот раздел"
+                        />
+                      )
+                  ) : (
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={!section.disabled}
+                      onClick={e => {
+                        e.stopPropagation()
+                        dispatch({ type: 'TOGGLE_SECTION_DISABLED', id: section.id })
+                      }}
+                      title={section.disabled ? 'Включить раздел' : 'Отключить раздел'}
+                      className={`shrink-0 relative inline-flex items-center w-7 h-4 rounded-full transition-colors cursor-pointer ${
+                        section.disabled ? 'bg-gray-300' : 'bg-indigo-500'
+                      }`}
+                    >
                       <span
-                        className={`shrink-0 inline-flex items-center px-1.5 h-5 rounded text-[10px] font-bold leading-none tracking-wide border ${
-                          isActive
-                            ? 'bg-white/10 text-white border-white/20'
-                            : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                        className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-sm transition-transform ${
+                          section.disabled ? 'translate-x-0.5' : 'translate-x-3.5'
                         }`}
-                        title="Клиент сможет отключить этот раздел"
-                      >
-                        опца
-                      </span>
-                    )
-                    : (
-                      <PuzzlePieceSolidIcon
-                        className={`shrink-0 w-4 h-4 ${isActive ? 'text-indigo-300' : 'text-indigo-500'}`}
-                        aria-label="Клиент сможет отключить этот раздел"
                       />
-                    )
+                    </button>
+                  )
                 )}
-                <span className={`text-xs shrink-0 tabular-nums ${isActive ? 'text-white/60' : 'text-[var(--color-muted)]'}`}>
+                <span className={`text-xs shrink-0 tabular-nums font-medium ${isActive ? 'text-white/60' : 'text-[var(--color-muted)]'}`}>
                   {sectionTotalHours(section)}ч
                 </span>
               </div>
             )
           })}
-          {state.sections.length === 0 && (
+          {state.sections.length === 0 && activeTab === 'editor' && (
             <div className="text-center py-8 text-[var(--color-muted)] text-xs">
               Нажмите «Добавить»
             </div>
@@ -247,8 +278,8 @@ function App() {
         {state.sections.length > 0 && (
           <div className="p-3 border-t border-[var(--color-border)] mt-auto">
             <div className="flex items-baseline justify-between">
-              <span className="text-[11px] uppercase tracking-wide text-[var(--color-muted)] font-medium">Итого</span>
-              <span className="text-[12px] text-[var(--color-muted)] tabular-nums">{grandTotalHours(state)} ч</span>
+              <span className="text-[11px] uppercase tracking-wide text-[var(--color-muted)] font-semibold">Итого</span>
+              <span className="text-[12px] text-[var(--color-muted)] tabular-nums font-medium">{grandTotalHours(state)} ч</span>
             </div>
             <div className="flex items-baseline gap-1 mt-1">
               <span className="text-[16px] font-bold text-[#202020] tabular-nums">{formatNumber(grandTotalCost(state))}</span>
@@ -275,7 +306,7 @@ function App() {
             <TabButton tab="roadmap" icon={<CalendarDaysIcon className="w-4 h-4" />} label="Дорожная карта" />
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <ImportButton />
+            {activeTab === 'editor' && <ImportButton />}
             <ExportButton />
           </div>
         </header>
