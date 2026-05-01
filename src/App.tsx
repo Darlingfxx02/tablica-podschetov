@@ -393,16 +393,13 @@ function App() {
                         <button
                           type="button"
                           onClick={() => dispatch({ type: 'TOGGLE_SECTION_OPTIONAL', id: activeSection.id })}
-                          title={activeSection.optional ? 'Опциональный раздел — клиент сможет отключить' : 'Сделать опциональным (клиент сможет отключить)'}
-                          className={`shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                          title={activeSection.optional ? 'Клиент сможет отключить этот раздел' : 'Сделать раздел отключаемым клиентом'}
+                          className={`shrink-0 inline-flex items-center px-2.5 h-7 rounded-md text-xs font-medium transition-colors cursor-pointer border ${
                             activeSection.optional
-                              ? 'bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200'
-                              : 'text-gray-400 hover:text-amber-600 hover:bg-amber-50 border border-transparent'
+                              ? 'bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200'
+                              : 'text-gray-500 hover:text-amber-700 hover:bg-amber-50 border-gray-200 hover:border-amber-200'
                           }`}
                         >
-                          {activeSection.optional
-                            ? <SparklesSolidIcon className="w-3.5 h-3.5" />
-                            : <SparklesIcon className="w-3.5 h-3.5" />}
                           {activeSection.optional ? 'Опционально' : 'Сделать опциональным'}
                         </button>
                         <span className="text-sm text-gray-400">

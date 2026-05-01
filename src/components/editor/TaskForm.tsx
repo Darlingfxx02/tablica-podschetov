@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from 'react'
-import { TrashIcon, SparklesIcon } from '@heroicons/react/24/outline'
-import { PencilIcon, SparklesIcon as SparklesSolidIcon } from '@heroicons/react/24/solid'
+import { TrashIcon } from '@heroicons/react/24/outline'
+import { PencilIcon } from '@heroicons/react/24/solid'
 import { useStore } from '../../store'
 import type { Task } from '../../types'
 
@@ -93,16 +93,14 @@ export function TaskForm({
           <button
             type="button"
             onClick={() => dispatch({ type: 'TOGGLE_TASK_OPTIONAL', sectionId, taskId: task.id })}
-            title={task.optional ? 'Опциональная задача — клиент сможет отключить' : 'Сделать опциональной (клиент сможет отключить)'}
-            className={`shrink-0 p-1.5 transition-colors cursor-pointer ${
+            title={task.optional ? 'Клиент сможет отключить эту задачу' : 'Сделать задачу отключаемой клиентом'}
+            className={`shrink-0 inline-flex items-center px-2 h-6 rounded text-[11px] font-medium transition-colors cursor-pointer border ${
               task.optional
-                ? 'text-amber-500 hover:text-amber-600'
-                : 'text-gray-300 hover:text-amber-500 opacity-0 group-hover/drag:opacity-100'
+                ? 'bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200'
+                : 'text-gray-500 hover:text-amber-700 hover:bg-amber-50 border-gray-200 hover:border-amber-200 opacity-0 group-hover/drag:opacity-100'
             }`}
           >
-            {task.optional
-              ? <SparklesSolidIcon className="w-4 h-4" />
-              : <SparklesIcon className="w-4 h-4" />}
+            {task.optional ? 'Опционально' : 'Сделать опц.'}
           </button>
           <button
             onClick={() => dispatch({ type: 'REMOVE_TASK', sectionId, taskId: task.id })}
