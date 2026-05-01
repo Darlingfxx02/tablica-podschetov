@@ -1,0 +1,48 @@
+# Coolify deploys this stack as a single application:
+#   web ─→ kp.darlingdesign.pro          (nginx serving the Vite SPA)
+#   api ─→ api.kp.darlingdesign.pro      (Node.js + SQLite multi-proposal API)
+#
+# Domain → service mapping is configured in the Coolify UI; Coolify injects
+# the Traefik labels and Let's Encrypt certs based on those settings.
+# The "expose" port is what Coolify routes to.
+#
+# Local docker compose up also works for end-to-end verification:
+#   docker compose up --build
+
+services:
+  api:
+    build:
+      context: ./mcp-server
+    expose:
+      - "24880"
+    volumes:
+      - estimate-data:/data
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:24880/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  web:
+    build:
+      context: .
+      args:
+        # Coolify can override this in the UI ("Build Variables") if a
+        # different API host is needed for staging or PR previews.
+        VITE_MCP_SERVER_URL: https://api.kp.darlingdesign.pro
+    expose:
+      - "80"
+    depends_on:
+      - api
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:80/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  estimate-data:

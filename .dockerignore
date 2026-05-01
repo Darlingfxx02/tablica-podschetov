@@ -1,0 +1,16 @@
+.git
+.github
+.claude
+.DS_Store
+node_modules
+dist
+mcp-server/node_modules
+mcp-server/dist
+tmp
+artifacts
+samples
+*.log
+.vscode
+.idea
+Tasks_and_Knoledge
+Таблица подсчётов 13.10.19
