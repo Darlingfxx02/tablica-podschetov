@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
 import { useStore, createEmptyRole } from './store'
 import { EstimateTable } from './components/preview/EstimateTable'
 import { RoadmapTable } from './components/preview/RoadmapTable'
@@ -8,18 +7,17 @@ import { ExportButton } from './components/ExportButton'
 import { ImportButton } from './components/ImportButton'
 import { TaskForm } from './components/editor/TaskForm'
 import { ApprovalPercentControl } from './components/shared/ApprovalPercentControl'
+import { BrandHeader } from './components/BrandHeader'
 import {
   PencilSquareIcon, PlusIcon, TrashIcon,
   XMarkIcon, LinkIcon, ChevronDownIcon,
   CalendarDaysIcon, TableCellsIcon, PuzzlePieceIcon,
-  ChevronLeftIcon, Cog6ToothIcon,
 } from '@heroicons/react/24/outline'
 import { PuzzlePieceIcon as PuzzlePieceSolidIcon } from '@heroicons/react/24/solid'
 import { sectionTotalHours, sectionTotalCost, totalRoleHours, grandTotalHours, grandTotalCost, formatNumber } from './lib/calculations'
 import { useDragReorder } from './hooks/useDragReorder'
 import { useUiSettings } from './lib/uiSettings'
 import type { SectionType, Breakpoint } from './types'
-import logoUrl from './assets/logo.svg'
 
 function pluralizeSpecialists(n: number): string {
   const mod100 = n % 100
@@ -164,32 +162,9 @@ function App() {
     <div className="h-screen flex bg-[#f5f5f5] overflow-hidden">
       {/* Sidebar */}
       <aside className="w-[260px] shrink-0 bg-white border-r border-[var(--color-border)] flex flex-col overflow-hidden">
-        <div className="px-5 pt-6 pb-3">
-          <Link to="/" className="inline-block" title="К проектам">
-            <img src={logoUrl} alt="uxart" className="h-7 w-auto" />
-          </Link>
-        </div>
+        <BrandHeader />
 
-        <nav className="px-2 pb-2 space-y-0.5">
-          <Link
-            to="/"
-            className="flex items-center gap-2.5 h-9 px-3 rounded-lg text-[13px] text-[#202020] hover:bg-[var(--color-row-even)] transition-colors"
-          >
-            <ChevronLeftIcon className="w-4 h-4 text-[var(--color-muted)]" />
-            <span className="flex-1">К проектам</span>
-          </Link>
-          <Link
-            to="/settings"
-            className="flex items-center gap-2.5 h-9 px-3 rounded-lg text-[13px] text-[#202020] hover:bg-[var(--color-row-even)] transition-colors"
-          >
-            <Cog6ToothIcon className="w-4 h-4 text-[var(--color-muted)]" />
-            <span className="flex-1">Настройки</span>
-          </Link>
-        </nav>
-
-        <div className="border-t border-[var(--color-border)] mt-1" />
-
-        <div className="px-3 pt-4 pb-2 flex items-center justify-between">
+        <div className="px-3 pt-2 pb-2 flex items-center justify-between">
           <span className="text-[11px] uppercase tracking-wide text-[var(--color-muted)] font-medium px-2">Блоки работ</span>
           <AddSectionDropdown onAdd={type => dispatch({ type: 'ADD_SECTION', sectionType: type })} />
         </div>
@@ -308,9 +283,9 @@ function App() {
         {/* Canvas content */}
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           {activeTab === 'editor' && (
-            <div className="px-8 py-6 space-y-4">
-              {/* Roles strip card */}
-              <div className="bg-white border border-[var(--color-border)] rounded-xl p-5">
+            <div className="px-8 py-6 space-y-8">
+              {/* Roles strip */}
+              <div>
                 <button
                   type="button"
                   onClick={() => setRolesCollapsed(v => !v)}
@@ -384,9 +359,9 @@ function App() {
                 </div>
               </div>
 
-              {/* Active section card */}
+              {/* Active section */}
               {activeSection ? (
-                <div className="bg-white border border-[var(--color-border)] rounded-xl p-6 space-y-4">
+                <div className="space-y-4">
                   {/* Section header */}
                   <div className="flex items-center gap-3">
                     {activeSection.linkedGroupId && (
@@ -502,7 +477,7 @@ function App() {
                   )}
                 </div>
               ) : (
-                <div className="bg-white border border-[var(--color-border)] rounded-xl flex items-center justify-center h-64 text-[var(--color-muted)] text-sm">
+                <div className="flex items-center justify-center h-64 text-[var(--color-muted)] text-sm">
                   Выберите или создайте блок работ
                 </div>
               )}
@@ -510,19 +485,15 @@ function App() {
           )}
 
           {activeTab === 'preview' && (
-            <div className="px-8 py-6">
-              <div className="bg-white rounded-xl border border-[var(--color-border)] p-6 overflow-x-auto">
-                <EstimateTable />
-              </div>
+            <div className="px-8 py-6 overflow-x-auto">
+              <EstimateTable />
             </div>
           )}
 
           {activeTab === 'roadmap' && (
-            <div className="px-8 py-6 space-y-4">
-              <div className="bg-white border border-[var(--color-border)] rounded-xl p-5">
-                <RoadmapSettingsPanel />
-              </div>
-              <div className="bg-white rounded-xl border border-[var(--color-border)] p-5 overflow-auto">
+            <div className="px-8 py-6 space-y-6">
+              <RoadmapSettingsPanel />
+              <div className="overflow-auto">
                 <RoadmapTable />
               </div>
             </div>

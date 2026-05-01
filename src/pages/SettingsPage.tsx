@@ -1,13 +1,11 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import {
-  ChevronLeftIcon,
   PaintBrushIcon,
   CheckIcon,
 } from '@heroicons/react/24/outline'
 import { PuzzlePieceIcon as PuzzlePieceSolidIcon } from '@heroicons/react/24/solid'
 import { useUiSettings, type OptionalDisplay } from '../lib/uiSettings'
-import logoUrl from '../assets/logo.svg'
+import { BrandHeader } from '../components/BrandHeader'
 
 type CategoryId = 'appearance'
 
@@ -48,25 +46,7 @@ function Sidebar({
 }) {
   return (
     <aside className="w-[260px] shrink-0 border-r border-[var(--color-border)] bg-white flex flex-col">
-      <div className="px-5 pt-6 pb-4">
-        <img src={logoUrl} alt="uxart" className="h-7 w-auto" />
-      </div>
-
-      <div className="px-3 pb-2">
-        <Link
-          to="/"
-          className="inline-flex items-center gap-1.5 px-2 h-8 rounded-md text-[13px] text-[var(--color-muted)] hover:text-[#202020] hover:bg-[var(--color-row-even)] transition-colors"
-        >
-          <ChevronLeftIcon className="w-4 h-4" />
-          К проектам
-        </Link>
-      </div>
-
-      <div className="px-5 pt-2 pb-4">
-        <div className="text-[11px] uppercase tracking-wide text-[var(--color-muted)] font-medium">
-          Настройки
-        </div>
-      </div>
+      <BrandHeader />
 
       <nav className="px-2 flex-1 space-y-0.5">
         {CATEGORIES.map(c => (
