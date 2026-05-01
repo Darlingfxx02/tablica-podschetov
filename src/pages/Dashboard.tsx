@@ -11,6 +11,7 @@ import {
   Squares2X2Icon,
 } from '@heroicons/react/24/outline'
 import { api, publicShareUrl, type ProposalMeta } from '../lib/api'
+import logoUrl from '../assets/logo.svg'
 
 type View = 'active' | 'archive'
 
@@ -119,12 +120,8 @@ interface SidebarProps {
 function Sidebar({ view, onViewChange, counts, search, onSearch, onCreate }: SidebarProps) {
   return (
     <aside className="w-[260px] shrink-0 border-r border-[var(--color-border)] bg-white flex flex-col">
-      <div className="px-5 pt-6 pb-4 flex items-center gap-2">
-        <div className="w-7 h-7 rounded-lg bg-[#202020] flex items-center justify-center text-white text-[12px] font-bold">КП</div>
-        <div className="flex-1 min-w-0">
-          <div className="text-[14px] font-semibold leading-tight truncate">Таблица подсчётов</div>
-          <div className="text-[11px] text-[var(--color-muted)] leading-tight">локальная база</div>
-        </div>
+      <div className="px-5 pt-6 pb-4">
+        <img src={logoUrl} alt="uxart" className="h-7 w-auto" />
       </div>
 
       <div className="px-3 pb-3">

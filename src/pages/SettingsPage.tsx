@@ -7,6 +7,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { PuzzlePieceIcon as PuzzlePieceSolidIcon } from '@heroicons/react/24/solid'
 import { useUiSettings, type OptionalDisplay } from '../lib/uiSettings'
+import logoUrl from '../assets/logo.svg'
 
 type CategoryId = 'appearance'
 
@@ -47,7 +48,11 @@ function Sidebar({
 }) {
   return (
     <aside className="w-[260px] shrink-0 border-r border-[var(--color-border)] bg-white flex flex-col">
-      <div className="px-3 pt-4 pb-3">
+      <div className="px-5 pt-6 pb-4">
+        <img src={logoUrl} alt="uxart" className="h-7 w-auto" />
+      </div>
+
+      <div className="px-3 pb-2">
         <Link
           to="/"
           className="inline-flex items-center gap-1.5 px-2 h-8 rounded-md text-[13px] text-[var(--color-muted)] hover:text-[#202020] hover:bg-[var(--color-row-even)] transition-colors"
