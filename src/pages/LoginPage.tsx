@@ -65,9 +65,9 @@ export function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-3">
             <Field
-              label="Email"
-              type="email"
-              autoComplete="email"
+              label={mode === 'login' ? 'Email или логин' : 'Email'}
+              type={mode === 'login' ? 'text' : 'email'}
+              autoComplete="username"
               value={email}
               onChange={setEmail}
               required
@@ -131,7 +131,7 @@ function Field({
   label, type, value, onChange, autoComplete, required,
 }: {
   label: string
-  type: 'email' | 'password'
+  type: 'email' | 'password' | 'text'
   value: string
   onChange: (v: string) => void
   autoComplete?: string

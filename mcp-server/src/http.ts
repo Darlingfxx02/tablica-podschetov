@@ -91,10 +91,13 @@ export function startHttpServer(store: ProposalStore, port: number) {
 
   app.post('/api/auth/login', async (req: AuthRequest, res) => {
     const { email, password } = (req.body ?? {}) as { email?: unknown; password?: unknown }
-    if (!isEmailish(email) || typeof password !== 'string') {
+    // Login accepts any non-empty string in the email field — the seeded
+    // admin uses a bare username, while normal users sign up with real
+    // emails. The DB lookup is the authoritative check.
+    if (typeof email !== 'string' || !email.trim() || typeof password !== 'string') {
       return res.status(400).json({ error: 'invalid credentials' })
     }
-    const user = store.getUserByEmail(email)
+    const user = store.getUserByEmail(email.trim())
     if (!user) return res.status(401).json({ error: 'invalid credentials' })
     const ok = await verifyPassword(password, user.passwordHash)
     if (!ok) return res.status(401).json({ error: 'invalid credentials' })
