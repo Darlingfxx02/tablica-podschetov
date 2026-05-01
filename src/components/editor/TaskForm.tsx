@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from 'react'
-import { TrashIcon } from '@heroicons/react/24/outline'
-import { PencilIcon } from '@heroicons/react/24/solid'
+import { TrashIcon, SparklesIcon } from '@heroicons/react/24/outline'
+import { PencilIcon, SparklesIcon as SparklesSolidIcon } from '@heroicons/react/24/solid'
 import { useStore } from '../../store'
 import type { Task } from '../../types'
 
@@ -90,6 +90,20 @@ export function TaskForm({
             />
             <PencilIcon className="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-400 transition-colors shrink-0" />
           </div>
+          <button
+            type="button"
+            onClick={() => dispatch({ type: 'TOGGLE_TASK_OPTIONAL', sectionId, taskId: task.id })}
+            title={task.optional ? 'Опциональная задача — клиент сможет отключить' : 'Сделать опциональной (клиент сможет отключить)'}
+            className={`shrink-0 p-1.5 transition-colors cursor-pointer ${
+              task.optional
+                ? 'text-amber-500 hover:text-amber-600'
+                : 'text-gray-300 hover:text-amber-500 opacity-0 group-hover/drag:opacity-100'
+            }`}
+          >
+            {task.optional
+              ? <SparklesSolidIcon className="w-4 h-4" />
+              : <SparklesIcon className="w-4 h-4" />}
+          </button>
           <button
             onClick={() => dispatch({ type: 'REMOVE_TASK', sectionId, taskId: task.id })}
             className="shrink-0 p-1.5 text-gray-400 hover:text-red-500 transition-colors cursor-pointer"

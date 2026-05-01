@@ -52,6 +52,8 @@ export type Action =
   | { type: 'TOGGLE_BREAKPOINT'; sectionId: string; breakpoint: Breakpoint }
   | { type: 'UPDATE_SECTION_NAME'; id: string; name: string }
   | { type: 'TOGGLE_SECTION_LINK'; id: string }
+  | { type: 'TOGGLE_SECTION_OPTIONAL'; id: string }
+  | { type: 'TOGGLE_TASK_OPTIONAL'; sectionId: string; taskId: string }
   | { type: 'REMOVE_SECTION'; id: string }
   | { type: 'MOVE_SECTION'; id: string; direction: 'up' | 'down' }
   | { type: 'REORDER_SECTION'; fromId: string; toId: string }
@@ -262,6 +264,47 @@ function reducerInner(state: ProjectEstimate, action: Action): ProjectEstimate {
         sections: state.sections.map(s =>
           s.linkedGroupId === groupId ? { ...s, linkBroken: nextBroken } : s,
         ),
+      }
+    }
+
+    case 'TOGGLE_SECTION_OPTIONAL': {
+      const target = state.sections.find(s => s.id === action.id)
+      if (!target) return state
+      const next = !target.optional
+      const synced = !!target.linkedGroupId && !target.linkBroken
+      return {
+        ...state,
+        sections: state.sections.map(s => {
+          if (s.id === action.id) return { ...s, optional: next }
+          if (synced && target.linkedGroupId && s.linkedGroupId === target.linkedGroupId) {
+            return { ...s, optional: next }
+          }
+          return s
+        }),
+      }
+    }
+
+    case 'TOGGLE_TASK_OPTIONAL': {
+      const target = state.sections.find(s => s.id === action.sectionId)
+      const oldTask = target?.tasks.find(t => t.id === action.taskId)
+      if (!target || !oldTask) return state
+      const next = !oldTask.optional
+      const linkId = oldTask.linkId
+      const synced = !!target.linkedGroupId && !target.linkBroken
+      return {
+        ...state,
+        sections: state.sections.map(s => {
+          if (s.id === action.sectionId) {
+            return { ...s, tasks: s.tasks.map(t => t.id === action.taskId ? { ...t, optional: next } : t) }
+          }
+          if (synced && linkId && target.linkedGroupId && s.linkedGroupId === target.linkedGroupId) {
+            return {
+              ...s,
+              tasks: s.tasks.map(t => t.linkId === linkId ? { ...t, optional: next } : t),
+            }
+          }
+          return s
+        }),
       }
     }
 

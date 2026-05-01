@@ -10,8 +10,9 @@ import { ApprovalPercentControl } from './components/shared/ApprovalPercentContr
 import {
   PencilSquareIcon, PlusIcon, TrashIcon,
   XMarkIcon, LinkIcon, ChevronDownIcon, Bars3Icon,
-  CalendarDaysIcon, TableCellsIcon,
+  CalendarDaysIcon, TableCellsIcon, SparklesIcon,
 } from '@heroicons/react/24/outline'
+import { SparklesIcon as SparklesSolidIcon } from '@heroicons/react/24/solid'
 import { sectionTotalHours, sectionTotalCost, totalRoleHours, grandTotalHours, grandTotalCost, formatNumber } from './lib/calculations'
 import { useDragReorder } from './hooks/useDragReorder'
 import type { SectionType, Breakpoint } from './types'
@@ -237,6 +238,20 @@ function App() {
                           </button>
                         )}
                         <span className="flex-1 truncate">{section.name || 'Без названия'}</span>
+                        <button
+                          type="button"
+                          onClick={e => { e.stopPropagation(); dispatch({ type: 'TOGGLE_SECTION_OPTIONAL', id: section.id }) }}
+                          title={section.optional ? 'Опциональный раздел — клиент сможет отключить' : 'Сделать опциональным (клиент сможет отключить)'}
+                          className={`shrink-0 p-0.5 transition-colors cursor-pointer ${
+                            section.optional
+                              ? 'text-amber-500 hover:text-amber-600'
+                              : 'text-gray-300 hover:text-amber-500 hidden group-hover:flex'
+                          }`}
+                        >
+                          {section.optional
+                            ? <SparklesSolidIcon className="w-3 h-3" />
+                            : <SparklesIcon className="w-3 h-3" />}
+                        </button>
                         <span className="text-[10px] text-gray-400 shrink-0">
                           {sectionTotalHours(section)}ч
                         </span>
@@ -375,6 +390,21 @@ function App() {
                           className="text-xl font-semibold bg-transparent border-none outline-none focus:ring-0 flex-1"
                           placeholder="Название блока"
                         />
+                        <button
+                          type="button"
+                          onClick={() => dispatch({ type: 'TOGGLE_SECTION_OPTIONAL', id: activeSection.id })}
+                          title={activeSection.optional ? 'Опциональный раздел — клиент сможет отключить' : 'Сделать опциональным (клиент сможет отключить)'}
+                          className={`shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                            activeSection.optional
+                              ? 'bg-amber-50 text-amber-600 hover:bg-amber-100 border border-amber-200'
+                              : 'text-gray-400 hover:text-amber-600 hover:bg-amber-50 border border-transparent'
+                          }`}
+                        >
+                          {activeSection.optional
+                            ? <SparklesSolidIcon className="w-3.5 h-3.5" />
+                            : <SparklesIcon className="w-3.5 h-3.5" />}
+                          {activeSection.optional ? 'Опционально' : 'Сделать опциональным'}
+                        </button>
                         <span className="text-sm text-gray-400">
                           {sectionTotalHours(activeSection)} ч / {formatNumber(sectionTotalCost(activeSection, state.roles))} руб.
                         </span>
