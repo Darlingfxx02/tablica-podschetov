@@ -1,10 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { UserCircleIcon, BriefcaseIcon } from '@heroicons/react/24/outline'
+import {
+  UserCircleIcon, BriefcaseIcon,
+  TableCellsIcon, CalendarDaysIcon,
+} from '@heroicons/react/24/outline'
 import { api, type ClientSelections, type PublicView } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { ReadOnlyStoreProvider } from '../store'
 import { EstimateTable } from '../components/preview/EstimateTable'
+import { RoadmapTable } from '../components/preview/RoadmapTable'
+import { ExportButton } from '../components/ExportButton'
 import type { ProjectEstimate } from '../types'
 import logoUrl from '../assets/logo.svg'
 
@@ -141,29 +146,29 @@ function ChoiceCard({
   )
 }
 
+type ClientTab = 'estimate' | 'roadmap'
+
 /**
- * Read-only render of the proposal. Optional sections show as toggles
- * the client can flip — disabled ones drop out of the totals because
- * EstimateTable already filters !s.disabled. Selections persist to the
- * server (debounced) so the seller can see what the client picked.
+ * Read-only render of the proposal. The client gets the same view the
+ * staff sees in Оценка / Дорожная карта tabs plus a download button —
+ * the only thing they can't do is edit. Optional sections render as
+ * toggles; selections persist to the server (debounced) so the seller
+ * sees what the client picked.
  */
 function ClientReadView({ data, token }: { data: PublicView | null; token: string }) {
+  const [activeTab, setActiveTab] = useState<ClientTab>('estimate')
   // sectionId → enabled. Missing means "use proposal default" (enabled
   // unless staff disabled it). False from server means client unchecked.
   const [overrides, setOverrides] = useState<Record<string, boolean>>({})
   const initialized = useRef(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Hydrate overrides from server-saved selections on first data arrival.
   useEffect(() => {
     if (!data || initialized.current) return
     initialized.current = true
     setOverrides({ ...data.selections.sections })
   }, [data])
 
-  // Debounced save back to server when overrides change. Skip the very
-  // first effect run (after hydration above) to avoid bouncing the same
-  // selections back to the server.
   const saveSeq = useRef(0)
   useEffect(() => {
     if (!initialized.current) return
@@ -173,15 +178,13 @@ function ClientReadView({ data, token }: { data: PublicView | null; token: strin
     saveTimer.current = setTimeout(() => {
       if (seq !== saveSeq.current) return
       const selections: ClientSelections = { sections: overrides, tasks: {} }
-      api.saveSelections(token, selections).catch(() => { /* offline, retry on next change */ })
+      api.saveSelections(token, selections).catch(() => { /* retry on next edit */ })
     }, 400)
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current)
     }
   }, [overrides, token])
 
-  // Apply client toggles on top of the proposal: an optional section the
-  // client unchecked becomes effectively disabled.
   const effectiveState: ProjectEstimate | null = useMemo(() => {
     if (!data) return null
     return {
@@ -209,22 +212,41 @@ function ClientReadView({ data, token }: { data: PublicView | null; token: strin
   }
 
   function isOn(sectionId: string): boolean {
-    const explicit = overrides[sectionId]
-    if (explicit === false) return false
-    return true
+    return overrides[sectionId] !== false
   }
 
   return (
     <ReadOnlyStoreProvider state={effectiveState} proposalId={data.proposal.id}>
       <main className="min-h-screen bg-[#f5f5f5] flex flex-col">
-        <header className="bg-white border-b border-[var(--color-border)] px-8 h-12 flex items-center sticky top-0 z-10">
-          <img src={logoUrl} alt="uxart" className="h-6 w-auto" />
-          <div className="ml-6 min-w-0">
-            <div className="text-[14px] font-semibold truncate">{data.proposal.name}</div>
+        <header className="relative bg-white border-b border-[var(--color-border)] px-8 h-12 flex items-center gap-4 sticky top-0 z-10">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <img src={logoUrl} alt="uxart" className="h-6 w-auto shrink-0" />
+            <div className="text-[14px] font-semibold text-[#202020] truncate">
+              {data.proposal.name}
+            </div>
+          </div>
+          <div className="absolute left-1/2 -translate-x-1/2 flex bg-[var(--color-row-even)] rounded-lg p-0.5">
+            <ClientTabButton
+              tab="estimate"
+              active={activeTab === 'estimate'}
+              onClick={() => setActiveTab('estimate')}
+              icon={<TableCellsIcon className="w-4 h-4" />}
+              label="Оценка"
+            />
+            <ClientTabButton
+              tab="roadmap"
+              active={activeTab === 'roadmap'}
+              onClick={() => setActiveTab('roadmap')}
+              icon={<CalendarDaysIcon className="w-4 h-4" />}
+              label="Дорожная карта"
+            />
+          </div>
+          <div className="shrink-0">
+            <ExportButton />
           </div>
         </header>
 
-        <div className="flex-1 px-4 md:px-8 py-6 space-y-5">
+        <div className="flex-1 px-4 md:px-8 py-6 space-y-5 min-h-0">
           {optionalSections.length > 0 && (
             <section className="max-w-[880px] mx-auto">
               <div className="text-[11px] uppercase tracking-wide text-[var(--color-muted)] font-semibold mb-2">
@@ -258,14 +280,47 @@ function ClientReadView({ data, token }: { data: PublicView | null; token: strin
             </section>
           )}
 
-          <section>
-            <div className="bg-white border border-[var(--color-border)] rounded-xl p-4 lg:p-6 overflow-x-auto">
-              <EstimateTable />
-            </div>
-          </section>
+          {activeTab === 'estimate' && (
+            <section>
+              <div className="bg-white border border-[var(--color-border)] rounded-xl p-4 lg:p-6 overflow-x-auto">
+                <EstimateTable />
+              </div>
+            </section>
+          )}
+
+          {activeTab === 'roadmap' && (
+            <section>
+              <div className="bg-white border border-[var(--color-border)] rounded-xl p-4 lg:p-6 overflow-auto">
+                <RoadmapTable />
+              </div>
+            </section>
+          )}
         </div>
       </main>
     </ReadOnlyStoreProvider>
+  )
+}
+
+function ClientTabButton({
+  active, onClick, icon, label,
+}: {
+  tab: ClientTab
+  active: boolean
+  onClick: () => void
+  icon: React.ReactNode
+  label: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center gap-1.5 px-3 h-8 rounded-md text-sm font-medium transition-all cursor-pointer ${
+        active ? 'bg-white shadow-sm text-[#202020]' : 'text-[var(--color-muted)]'
+      }`}
+    >
+      {icon}
+      {label}
+    </button>
   )
 }
 
