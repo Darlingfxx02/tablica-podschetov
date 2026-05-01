@@ -283,7 +283,8 @@ function App() {
         {/* Canvas content */}
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           {activeTab === 'editor' && (
-            <div className="px-8 py-6 space-y-8">
+            <div className="px-4 md:px-8 py-6">
+              <div className="max-w-[880px] mx-auto space-y-8">
               {/* Roles strip */}
               <div>
                 <button
@@ -481,6 +482,7 @@ function App() {
                   Выберите или создайте блок работ
                 </div>
               )}
+              </div>
             </div>
           )}
 

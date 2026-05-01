@@ -79,14 +79,13 @@ export function TaskForm({
       <div className="flex-1 min-w-0">
         {/* Title row */}
         <div className="flex items-center gap-2.5">
-          <div className="group flex flex-1 items-center gap-1.5 px-0.5">
+          <div className="group flex flex-1 min-w-0 items-center gap-1.5 px-0.5">
             <input
               type="text"
               value={task.title}
               onChange={e => updateField({ title: e.target.value })}
               placeholder="Название задачи"
-              size={1}
-              className="field-sizing-content max-w-full text-sm font-semibold bg-transparent border-none outline-none focus:ring-0 placeholder:text-gray-400 placeholder:font-semibold"
+              className="flex-1 min-w-0 text-sm font-semibold bg-transparent border-none outline-none focus:ring-0 placeholder:text-gray-400 placeholder:font-semibold"
             />
             <PencilIcon className="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-400 transition-colors shrink-0" />
           </div>
@@ -124,7 +123,7 @@ export function TaskForm({
             {state.roles.map(role => (
               <div
                 key={role.id}
-                className="flex items-center justify-center gap-0.5 w-12 h-8 rounded-lg border border-gray-200 focus-within:border-indigo-400 focus-within:ring-1 focus-within:ring-indigo-400 transition-all"
+                className="flex items-center justify-center gap-0.5 w-14 h-9 rounded-lg border border-gray-200 focus-within:border-indigo-400 focus-within:ring-1 focus-within:ring-indigo-400 transition-all"
                 style={{ backgroundColor: role.color + '14' }}
                 title={role.title}
               >
@@ -134,7 +133,7 @@ export function TaskForm({
                   value={task.hours[role.id] || ''}
                   onChange={e => setHours(role.id, e.target.value)}
                   placeholder="0"
-                  className="w-6 text-sm text-center bg-transparent border-none outline-none focus:ring-0 p-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  className="w-7 text-sm text-center bg-transparent border-none outline-none focus:ring-0 p-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 />
                 <span className="text-xs text-gray-400 leading-none">ч</span>
               </div>
