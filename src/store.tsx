@@ -2,9 +2,12 @@
 import { createContext, useContext, useReducer, useEffect, useRef, type ReactNode } from 'react'
 import type { ProjectEstimate, Role, Section, Task, SectionType, Breakpoint, RoadmapSettings } from './types'
 
-const STORAGE_KEY = 'project-estimate'
-const MCP_SERVER_URL = import.meta.env?.VITE_MCP_SERVER_URL || 'http://localhost:24880'
-const MCP_WS_URL = MCP_SERVER_URL.replace(/^http/, 'ws') + '/ws'
+export const SERVER_URL = import.meta.env?.VITE_MCP_SERVER_URL || 'http://localhost:24880'
+const WS_URL = SERVER_URL.replace(/^http/, 'ws') + '/ws'
+
+function storageKeyFor(proposalId: string): string {
+  return `proposal-${proposalId}`
+}
 
 const ROLE_COLORS = [
   '#6366f1', // indigo
@@ -494,56 +497,70 @@ function reducerInner(state: ProjectEstimate, action: Action): ProjectEstimate {
   }
 }
 
-function loadState(): ProjectEstimate {
+function loadCachedState(proposalId: string): ProjectEstimate | null {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY)
+    const saved = localStorage.getItem(storageKeyFor(proposalId))
     if (saved) {
       const data = JSON.parse(saved) as ProjectEstimate
-      // Migrate: assign colors to roles that don't have one
       data.roles = data.roles.map((r, i) => r.color ? r : { ...r, color: ROLE_COLORS[i % ROLE_COLORS.length] })
       return data
     }
   } catch { /* ignore */ }
-  return defaultState
+  return null
 }
 
 const StoreContext = createContext<{
   state: ProjectEstimate
   dispatch: React.Dispatch<Action>
-}>({ state: defaultState, dispatch: () => {} })
+  proposalId: string
+}>({ state: defaultState, dispatch: () => {}, proposalId: '' })
 
-export function StoreProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, null, loadState)
+/**
+ * Provides editor state for a single proposal. Re-mount with a different
+ * proposalId (use it as a `key` prop on the parent route) to switch documents.
+ */
+export function StoreProvider({ proposalId, children }: { proposalId: string; children: ReactNode }) {
+  const initialFromCache = loadCachedState(proposalId)
+  const [state, dispatch] = useReducer(reducer, initialFromCache ?? defaultState)
   const isRemoteUpdate = useRef(false)
+  // Until we've either loaded from cache or heard back from the server, do not
+  // PUT — otherwise the placeholder defaultState would overwrite real data on
+  // first mount of a brand-new proposalId.
+  const hasAuthoritativeState = useRef(initialFromCache !== null)
   const wsRef = useRef<WebSocket | null>(null)
+  const putTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Load initial state from MCP server
   useEffect(() => {
-    fetch(`${MCP_SERVER_URL}/api/state`)
-      .then(res => res.json())
-      .then((serverState: ProjectEstimate) => {
+    let cancelled = false
+    fetch(`${SERVER_URL}/api/proposals/${proposalId}`)
+      .then(res => res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`)))
+      .then((proposal: { state: ProjectEstimate }) => {
+        if (cancelled) return
         isRemoteUpdate.current = true
-        dispatch({ type: 'LOAD', state: serverState })
+        hasAuthoritativeState.current = true
+        dispatch({ type: 'LOAD', state: proposal.state })
       })
       .catch(() => {
-        // Server not available, use localStorage (already loaded)
+        // Server unreachable: trust the cache (or defaultState) from now on so
+        // the user's offline edits get queued for the next successful PUT.
+        if (!cancelled) hasAuthoritativeState.current = true
       })
-  }, [])
+    return () => { cancelled = true }
+  }, [proposalId])
 
-  // WebSocket connection for real-time sync
   useEffect(() => {
     let reconnectTimer: ReturnType<typeof setTimeout>
     let ws: WebSocket
 
     function connect() {
       try {
-        ws = new WebSocket(MCP_WS_URL)
+        ws = new WebSocket(`${WS_URL}?proposalId=${encodeURIComponent(proposalId)}`)
         wsRef.current = ws
 
         ws.onmessage = (event) => {
           try {
             const msg = JSON.parse(event.data)
-            if (msg.type === 'state_update') {
+            if (msg.type === 'state_update' && msg.proposalId === proposalId) {
               isRemoteUpdate.current = true
               dispatch({ type: 'LOAD', state: msg.state })
             }
@@ -555,9 +572,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           reconnectTimer = setTimeout(connect, 3000)
         }
 
-        ws.onerror = () => {
-          ws.close()
-        }
+        ws.onerror = () => { ws.close() }
       } catch {
         reconnectTimer = setTimeout(connect, 3000)
       }
@@ -572,14 +587,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         wsRef.current.close()
       }
     }
-  }, [])
+  }, [proposalId])
 
-  // Persist to localStorage + sync to server (debounced)
-  const putTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+    localStorage.setItem(storageKeyFor(proposalId), JSON.stringify(state))
 
-    // Don't send back to server if this was a remote update
+    if (!hasAuthoritativeState.current) return
+
     if (isRemoteUpdate.current) {
       isRemoteUpdate.current = false
       return
@@ -588,15 +602,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (putTimerRef.current) clearTimeout(putTimerRef.current)
     putTimerRef.current = setTimeout(() => {
       putTimerRef.current = null
-      fetch(`${MCP_SERVER_URL}/api/state`, {
+      fetch(`${SERVER_URL}/api/proposals/${proposalId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(state),
-      }).catch(() => {
-        // Server not available, that's ok
-      })
+      }).catch(() => { /* offline edit; cache stays */ })
     }, 250)
-  }, [state])
+  }, [state, proposalId])
 
   useEffect(() => {
     return () => {
@@ -605,7 +617,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <StoreContext.Provider value={{ state, dispatch }}>
+    <StoreContext.Provider value={{ state, dispatch, proposalId }}>
       {children}
     </StoreContext.Provider>
   )
