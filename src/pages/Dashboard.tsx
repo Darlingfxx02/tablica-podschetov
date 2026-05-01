@@ -290,7 +290,7 @@ function ProposalTile({
   return (
     <div
       ref={cardRef}
-      className="group relative rounded-2xl bg-white border border-[var(--color-border)] overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all"
+      className="group relative rounded-2xl bg-white border border-[var(--color-border)] overflow-hidden hover:border-gray-300 transition-colors"
     >
       <Link to={`/p/${p.id}`} className="block">
         <div
