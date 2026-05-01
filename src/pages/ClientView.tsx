@@ -104,13 +104,11 @@ function Gate({
           <ChoiceCard
             icon={<UserCircleIcon className="w-6 h-6" />}
             title="Я клиент"
-            description="Открыть КП в режиме просмотра — ничего не нужно регистрировать."
             onClick={onClient}
           />
           <ChoiceCard
             icon={<BriefcaseIcon className="w-6 h-6" />}
             title="Я сотрудник"
-            description="Перейти к редактированию. Если не залогинен — войду или создам аккаунт."
             onClick={onStaff}
           />
         </div>
@@ -120,28 +118,22 @@ function Gate({
 }
 
 function ChoiceCard({
-  icon, title, description, onClick,
+  icon, title, onClick,
 }: {
   icon: React.ReactNode
   title: string
-  description: string
   onClick: () => void
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="text-left bg-white border border-[var(--color-border)] rounded-2xl p-5 flex items-start gap-4 hover:border-[#202020] transition-colors cursor-pointer"
+      className="text-left bg-white border border-[var(--color-border)] rounded-2xl p-5 flex items-center gap-4 hover:border-[#202020] transition-colors cursor-pointer"
     >
       <span className="shrink-0 w-10 h-10 rounded-lg bg-[var(--color-row-even)] text-[#202020] flex items-center justify-center">
         {icon}
       </span>
-      <span className="flex-1 min-w-0">
-        <span className="block text-[15px] font-semibold text-[#202020]">{title}</span>
-        <span className="block text-[13px] text-[var(--color-muted)] mt-1 leading-relaxed">
-          {description}
-        </span>
-      </span>
+      <span className="block text-[15px] font-semibold text-[#202020]">{title}</span>
     </button>
   )
 }
