@@ -267,7 +267,7 @@ function App() {
             value={state.projectName}
             onChange={e => dispatch({ type: 'SET_PROJECT_NAME', name: e.target.value })}
             placeholder="Без имени"
-            className="text-[14px] font-medium text-[#202020] bg-transparent border-none outline-none focus:ring-0 min-w-0 flex-1 leading-none"
+            className="text-[14px] font-semibold text-[#202020] bg-transparent border-none outline-none focus:ring-0 min-w-0 flex-1 leading-none"
           />
           <div className="absolute left-1/2 -translate-x-1/2 flex bg-[var(--color-row-even)] rounded-lg p-0.5">
             <TabButton tab="editor" icon={<PencilSquareIcon className="w-4 h-4" />} label="Редактор" />
@@ -307,7 +307,7 @@ function App() {
                         ref={roleDrag.itemRef(role.id)}
                         {...roleDrag.dragHandleProps(role.id)}
                         onClick={() => setEditingRoleId(role.id)}
-                        className={`bg-white border border-gray-100/80 rounded-xl px-3.5 py-3 min-w-[180px] flex-1 max-w-[240px] cursor-grab active:cursor-grabbing ${
+                        className={`bg-white border border-gray-200 rounded-xl px-3.5 py-3 min-w-[180px] flex-1 max-w-[240px] cursor-grab active:cursor-grabbing ${
                           roleDrag.draggingId === role.id ? 'opacity-0 pointer-events-none' : ''
                         }`}
                       >
