@@ -202,20 +202,29 @@ function ClientReadView({ data, token }: { data: PublicView | null; token: strin
     }
   }, [data, overrides, taskOverrides])
 
-  const optionalSections = useMemo(() => {
+  // Древесная группировка: каждая секция, у которой есть что-то
+  // опциональное (сама секция или её задачи) — корневой узел; её
+  // опциональные задачи — ветки. Если у не-опциональной секции нет
+  // опциональных задач, она в дерево не попадает.
+  const optionalTree = useMemo(() => {
     if (!data) return []
-    return data.proposal.state.sections.filter(s => s.optional)
-  }, [data])
-
-  const optionalTasks = useMemo(() => {
-    if (!data) return []
-    const out: { sectionName: string; task: { id: string; title: string } }[] = []
+    const out: {
+      sectionId: string
+      sectionName: string
+      sectionOptional: boolean
+      tasks: { id: string; title: string }[]
+    }[] = []
     for (const s of data.proposal.state.sections) {
-      if (s.optional) continue // covered by the section toggle above
-      for (const t of s.tasks) {
-        if (t.optional && !t.isDivider) {
-          out.push({ sectionName: s.name, task: { id: t.id, title: t.title } })
-        }
+      const tasks = s.tasks
+        .filter(t => t.optional && !t.isDivider)
+        .map(t => ({ id: t.id, title: t.title }))
+      if (s.optional || tasks.length > 0) {
+        out.push({
+          sectionId: s.id,
+          sectionName: s.name,
+          sectionOptional: !!s.optional,
+          tasks,
+        })
       }
     }
     return out
@@ -236,7 +245,7 @@ function ClientReadView({ data, token }: { data: PublicView | null; token: strin
     return taskOverrides[taskId] !== false
   }
 
-  const hasOptionalToggles = optionalSections.length > 0 || optionalTasks.length > 0
+  const hasOptionalToggles = optionalTree.length > 0
 
   return (
     <ReadOnlyStoreProvider state={effectiveState} proposalId={data.proposal.id}>
@@ -254,28 +263,58 @@ function ClientReadView({ data, token }: { data: PublicView | null; token: strin
                   Дополнительные опции
                 </span>
               </div>
-              <nav className="flex-1 px-2 pb-2 space-y-0.5 overflow-y-auto overscroll-contain">
-                {optionalSections.map(s => {
-                  const on = isSectionOn(s.id)
+              <nav className="flex-1 px-2 pb-2 overflow-y-auto overscroll-contain">
+                {optionalTree.map((node, idx) => {
+                  const sectionOn = isSectionOn(node.sectionId)
                   return (
-                    <ClientOptionRow
-                      key={s.id}
-                      label={s.name || 'Раздел без названия'}
-                      on={on}
-                      onToggle={() => setOverrides(prev => ({ ...prev, [s.id]: !on }))}
-                    />
-                  )
-                })}
-                {optionalTasks.map(({ sectionName, task }) => {
-                  const on = isTaskOn(task.id)
-                  return (
-                    <ClientOptionRow
-                      key={task.id}
-                      label={task.title || 'Задача без названия'}
-                      hint={sectionName}
-                      on={on}
-                      onToggle={() => setTaskOverrides(prev => ({ ...prev, [task.id]: !on }))}
-                    />
+                    <div key={node.sectionId} className={idx === 0 ? '' : 'mt-2'}>
+                      {node.sectionOptional ? (
+                        <ClientOptionRow
+                          label={node.sectionName || 'Раздел без названия'}
+                          on={sectionOn}
+                          onToggle={() =>
+                            setOverrides(prev => ({ ...prev, [node.sectionId]: !sectionOn }))
+                          }
+                        />
+                      ) : (
+                        <div className="px-3 h-9 flex items-center text-sm font-semibold text-[#202020] truncate">
+                          {node.sectionName || 'Раздел без названия'}
+                        </div>
+                      )}
+                      {node.tasks.length > 0 && (
+                        <div
+                          className={`relative ml-[18px] pl-3 ${
+                            node.sectionOptional && !sectionOn ? 'opacity-40' : ''
+                          }`}
+                        >
+                          {/* Вертикальная линия дерева — обрывается на середине последней ветки */}
+                          <span
+                            aria-hidden
+                            className="absolute left-0 top-0 w-px bg-[var(--color-border)]"
+                            style={{ height: `calc(100% - 18px)` }}
+                          />
+                          {node.tasks.map(t => {
+                            const on = isTaskOn(t.id)
+                            return (
+                              <div key={t.id} className="relative">
+                                {/* Горизонтальный коннектор «├─» к строке */}
+                                <span
+                                  aria-hidden
+                                  className="absolute left-[-12px] top-[18px] w-3 h-px bg-[var(--color-border)]"
+                                />
+                                <ClientOptionRow
+                                  label={t.title || 'Задача без названия'}
+                                  on={on}
+                                  onToggle={() =>
+                                    setTaskOverrides(prev => ({ ...prev, [t.id]: !on }))
+                                  }
+                                />
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
                   )
                 })}
               </nav>
@@ -342,10 +381,9 @@ function ClientReadView({ data, token }: { data: PublicView | null; token: strin
 }
 
 function ClientOptionRow({
-  label, hint, on, onToggle,
+  label, on, onToggle,
 }: {
   label: string
-  hint?: string
   on: boolean
   onToggle: () => void
 }) {
@@ -353,8 +391,7 @@ function ClientOptionRow({
     <button
       type="button"
       onClick={onToggle}
-      title={hint ? `${hint} — ${label}` : undefined}
-      className={`w-full relative flex items-center gap-1.5 px-3 h-9 rounded-lg text-[13px] text-left text-[#202020] select-none transition-colors hover:bg-[var(--color-row-even)] ${
+      className={`w-full relative flex items-center gap-1.5 px-3 h-9 rounded-lg text-sm text-left text-[#202020] select-none transition-colors hover:bg-[var(--color-row-even)] ${
         on ? '' : 'opacity-50'
       }`}
     >
