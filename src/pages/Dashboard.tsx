@@ -11,6 +11,11 @@ import {
   Squares2X2Icon,
 } from '@heroicons/react/24/outline'
 import { api, publicShareUrl, type ProposalMeta } from '../lib/api'
+import {
+  useProposals,
+  addProposalToCache,
+  patchProposalInCache,
+} from '../lib/proposalsCache'
 import { SidebarPortal } from '../components/AppLayout'
 
 type View = 'active' | 'archive'
@@ -18,21 +23,8 @@ type View = 'active' | 'archive'
 export function Dashboard() {
   const [view, setView] = useState<View>('active')
   const [search, setSearch] = useState('')
-  const [proposals, setProposals] = useState<ProposalMeta[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const { proposals, error, refresh } = useProposals()
   const navigate = useNavigate()
-
-  async function refresh() {
-    try {
-      const list = await api.listProposals(true)
-      setProposals(list)
-      setError(null)
-    } catch (err) {
-      setError(String(err))
-    }
-  }
-
-  useEffect(() => { void refresh() }, [])
 
   const filtered = useMemo(() => {
     if (!proposals) return []
@@ -56,6 +48,7 @@ export function Dashboard() {
     if (!name?.trim()) return
     try {
       const created = await api.createProposal(name.trim())
+      addProposalToCache(created)
       navigate(`/p/${created.id}`)
     } catch (err) {
       alert(`Не удалось создать КП: ${err}`)
@@ -242,10 +235,13 @@ function ProposalTile({
   async function handleRename() {
     const next = window.prompt('Новое название', p.name)
     if (!next?.trim() || next.trim() === p.name) return setMenuOpen(false)
+    const trimmed = next.trim()
+    patchProposalInCache(p.id, { name: trimmed, updatedAt: Date.now() })
     try {
-      await api.renameProposal(p.id, next.trim())
+      await api.renameProposal(p.id, trimmed)
       onChanged()
     } catch (err) {
+      onChanged()
       alert(`Не удалось переименовать: ${err}`)
     } finally {
       setMenuOpen(false)
@@ -264,10 +260,12 @@ function ProposalTile({
 
   async function handleArchive() {
     if (!window.confirm(`Архивировать «${p.name}»?`)) return setMenuOpen(false)
+    patchProposalInCache(p.id, { archivedAt: Date.now() })
     try {
       await api.archiveProposal(p.id)
       onChanged()
     } catch (err) {
+      onChanged()
       alert(`Не удалось архивировать: ${err}`)
     } finally {
       setMenuOpen(false)
@@ -275,10 +273,12 @@ function ProposalTile({
   }
 
   async function handleRestore() {
+    patchProposalInCache(p.id, { archivedAt: undefined })
     try {
       await api.restoreProposal(p.id)
       onChanged()
     } catch (err) {
+      onChanged()
       alert(`Не удалось восстановить: ${err}`)
     } finally {
       setMenuOpen(false)
