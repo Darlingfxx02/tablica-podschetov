@@ -157,9 +157,11 @@ type ClientTab = 'estimate' | 'roadmap'
  */
 function ClientReadView({ data, token }: { data: PublicView | null; token: string }) {
   const [activeTab, setActiveTab] = useState<ClientTab>('estimate')
-  // sectionId → enabled. Missing means "use proposal default" (enabled
-  // unless staff disabled it). False from server means client unchecked.
+  // sectionId / taskId → enabled. Missing means "use proposal default"
+  // (enabled unless staff disabled it). False from server means client
+  // unchecked.
   const [overrides, setOverrides] = useState<Record<string, boolean>>({})
+  const [taskOverrides, setTaskOverrides] = useState<Record<string, boolean>>({})
   const initialized = useRef(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -167,6 +169,7 @@ function ClientReadView({ data, token }: { data: PublicView | null; token: strin
     if (!data || initialized.current) return
     initialized.current = true
     setOverrides({ ...data.selections.sections })
+    setTaskOverrides({ ...data.selections.tasks })
   }, [data])
 
   const saveSeq = useRef(0)
@@ -177,30 +180,45 @@ function ClientReadView({ data, token }: { data: PublicView | null; token: strin
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
       if (seq !== saveSeq.current) return
-      const selections: ClientSelections = { sections: overrides, tasks: {} }
+      const selections: ClientSelections = { sections: overrides, tasks: taskOverrides }
       api.saveSelections(token, selections).catch(() => { /* retry on next edit */ })
     }, 400)
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current)
     }
-  }, [overrides, token])
+  }, [overrides, taskOverrides, token])
 
   const effectiveState: ProjectEstimate | null = useMemo(() => {
     if (!data) return null
     return {
       ...data.proposal.state,
       sections: data.proposal.state.sections.map(s => {
-        if (!s.optional) return s
+        const tasks = s.tasks.filter(t => !(t.optional && taskOverrides[t.id] === false))
+        if (!s.optional) return { ...s, tasks }
         const explicit = overrides[s.id]
-        if (explicit === false) return { ...s, disabled: true }
-        return { ...s, disabled: false }
+        const disabled = explicit === false
+        return { ...s, tasks, disabled }
       }),
     }
-  }, [data, overrides])
+  }, [data, overrides, taskOverrides])
 
   const optionalSections = useMemo(() => {
     if (!data) return []
     return data.proposal.state.sections.filter(s => s.optional)
+  }, [data])
+
+  const optionalTasks = useMemo(() => {
+    if (!data) return []
+    const out: { sectionName: string; task: { id: string; title: string } }[] = []
+    for (const s of data.proposal.state.sections) {
+      if (s.optional) continue // covered by the section toggle above
+      for (const t of s.tasks) {
+        if (t.optional && !t.isDivider) {
+          out.push({ sectionName: s.name, task: { id: t.id, title: t.title } })
+        }
+      }
+    }
+    return out
   }, [data])
 
   if (!data || !effectiveState) {
@@ -211,93 +229,150 @@ function ClientReadView({ data, token }: { data: PublicView | null; token: strin
     )
   }
 
-  function isOn(sectionId: string): boolean {
+  function isSectionOn(sectionId: string): boolean {
     return overrides[sectionId] !== false
   }
+  function isTaskOn(taskId: string): boolean {
+    return taskOverrides[taskId] !== false
+  }
+
+  const hasOptionalToggles = optionalSections.length > 0 || optionalTasks.length > 0
 
   return (
     <ReadOnlyStoreProvider state={effectiveState} proposalId={data.proposal.id}>
-      <main className="min-h-screen bg-[#f5f5f5] flex flex-col">
-        <header className="relative bg-white border-b border-[var(--color-border)] px-8 h-12 flex items-center gap-4 sticky top-0 z-10">
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <img src={logoUrl} alt="uxart" className="h-6 w-auto shrink-0" />
-            <div className="text-[14px] font-semibold text-[#202020] truncate">
-              {data.proposal.name}
-            </div>
+      <div className="h-screen flex bg-[#f5f5f5] text-[#202020] overflow-hidden">
+        {/* Sidebar */}
+        <aside className="w-[260px] shrink-0 bg-white border-r border-[var(--color-border)] flex flex-col overflow-hidden">
+          <div className="px-5 pt-6 pb-4 flex items-center">
+            <img src={logoUrl} alt="uxart" className="h-7 w-auto" />
           </div>
-          <div className="absolute left-1/2 -translate-x-1/2 flex bg-[var(--color-row-even)] rounded-lg p-0.5">
-            <ClientTabButton
-              tab="estimate"
-              active={activeTab === 'estimate'}
-              onClick={() => setActiveTab('estimate')}
-              icon={<TableCellsIcon className="w-4 h-4" />}
-              label="Оценка"
-            />
-            <ClientTabButton
-              tab="roadmap"
-              active={activeTab === 'roadmap'}
-              onClick={() => setActiveTab('roadmap')}
-              icon={<CalendarDaysIcon className="w-4 h-4" />}
-              label="Дорожная карта"
-            />
-          </div>
-          <div className="shrink-0">
-            <ExportButton />
-          </div>
-        </header>
 
-        <div className="flex-1 px-4 md:px-8 py-6 space-y-5 min-h-0">
-          {optionalSections.length > 0 && (
-            <section className="max-w-[880px] mx-auto">
-              <div className="text-[11px] uppercase tracking-wide text-[var(--color-muted)] font-semibold mb-2">
-                Опциональные разделы
+          {hasOptionalToggles ? (
+            <>
+              <div className="px-5 pt-2 pb-2">
+                <span className="text-[11px] uppercase tracking-wide text-[var(--color-muted)] font-semibold">
+                  Дополнительные опции
+                </span>
               </div>
-              <div className="bg-white border border-[var(--color-border)] rounded-xl p-3 flex flex-wrap gap-2">
+              <nav className="flex-1 px-2 pb-2 space-y-0.5 overflow-y-auto overscroll-contain">
                 {optionalSections.map(s => {
-                  const on = isOn(s.id)
+                  const on = isSectionOn(s.id)
                   return (
-                    <label
+                    <ClientOptionRow
                       key={s.id}
-                      className={`inline-flex items-center gap-2 px-3 h-9 rounded-lg border cursor-pointer transition-colors ${
-                        on
-                          ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
-                          : 'bg-[var(--color-row-even)] border-[var(--color-border)] text-[var(--color-muted)]'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={on}
-                        onChange={() =>
-                          setOverrides(prev => ({ ...prev, [s.id]: !on }))
-                        }
-                        className="accent-indigo-500"
-                      />
-                      <span className="text-[13px] font-medium">{s.name || 'Раздел без названия'}</span>
-                    </label>
+                      label={s.name || 'Раздел без названия'}
+                      on={on}
+                      onToggle={() => setOverrides(prev => ({ ...prev, [s.id]: !on }))}
+                    />
                   )
                 })}
-              </div>
-            </section>
+                {optionalTasks.map(({ sectionName, task }) => {
+                  const on = isTaskOn(task.id)
+                  return (
+                    <ClientOptionRow
+                      key={task.id}
+                      label={task.title || 'Задача без названия'}
+                      hint={sectionName}
+                      on={on}
+                      onToggle={() => setTaskOverrides(prev => ({ ...prev, [task.id]: !on }))}
+                    />
+                  )
+                })}
+              </nav>
+            </>
+          ) : (
+            <div className="flex-1" />
           )}
+        </aside>
 
-          {activeTab === 'estimate' && (
-            <section>
-              <div className="bg-white border border-[var(--color-border)] rounded-xl p-4 lg:p-6 overflow-x-auto">
-                <EstimateTable />
-              </div>
-            </section>
-          )}
+        {/* Main */}
+        <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
+          <header className="relative bg-white border-b border-[var(--color-border)] flex items-center gap-4 px-8 h-12 shrink-0">
+            <div className="text-[14px] font-semibold text-[#202020] truncate min-w-0 flex-1 leading-none">
+              {data.proposal.name}
+            </div>
+            <div className="absolute left-1/2 -translate-x-1/2 flex bg-[var(--color-row-even)] rounded-lg p-0.5">
+              <ClientTabButton
+                tab="estimate"
+                active={activeTab === 'estimate'}
+                onClick={() => setActiveTab('estimate')}
+                icon={<TableCellsIcon className="w-4 h-4" />}
+                label="Оценка"
+              />
+              <ClientTabButton
+                tab="roadmap"
+                active={activeTab === 'roadmap'}
+                onClick={() => setActiveTab('roadmap')}
+                icon={<CalendarDaysIcon className="w-4 h-4" />}
+                label="Дорожная карта"
+              />
+            </div>
+            <div className="shrink-0">
+              <ExportButton />
+            </div>
+          </header>
 
-          {activeTab === 'roadmap' && (
-            <section>
-              <div className="bg-white border border-[var(--color-border)] rounded-xl p-4 lg:p-6 overflow-auto">
-                <RoadmapTable />
+          <div className="flex-1 min-h-0 flex flex-col">
+            {activeTab === 'estimate' && (
+              <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 md:px-8 py-6">
+                <div className="bg-white border border-[var(--color-border)] rounded-xl overflow-hidden">
+                  <div className="p-4 lg:p-6 overflow-hidden">
+                    <EstimateTable />
+                  </div>
+                </div>
               </div>
-            </section>
-          )}
-        </div>
-      </main>
+            )}
+
+            {activeTab === 'roadmap' && (
+              <div className="flex-1 min-h-0 flex flex-col px-4 md:px-8 pt-6">
+                <div className="bg-white border border-[var(--color-border)] border-b-0 rounded-t-xl overflow-hidden flex-1 min-h-0 flex flex-col">
+                  <div className="px-4 pt-4 lg:px-6 lg:pt-6 flex-1 min-h-0 flex flex-col">
+                    <div className="flex-1 min-h-0 overflow-auto overscroll-contain">
+                      <RoadmapTable />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
     </ReadOnlyStoreProvider>
+  )
+}
+
+function ClientOptionRow({
+  label, hint, on, onToggle,
+}: {
+  label: string
+  hint?: string
+  on: boolean
+  onToggle: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      title={hint ? `${hint} — ${label}` : undefined}
+      className={`w-full relative flex items-center gap-1.5 px-3 h-9 rounded-lg text-[13px] text-left text-[#202020] select-none transition-colors hover:bg-[var(--color-row-even)] ${
+        on ? '' : 'opacity-50'
+      }`}
+    >
+      <span className="flex-1 truncate font-medium">{label}</span>
+      <span
+        role="switch"
+        aria-checked={on}
+        className={`shrink-0 ml-1 relative inline-flex items-center w-7 h-4 rounded-full transition-colors ${
+          on ? 'bg-indigo-500' : 'bg-gray-300'
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-sm transition-transform ${
+            on ? 'translate-x-3.5' : 'translate-x-0.5'
+          }`}
+        />
+      </span>
+    </button>
   )
 }
 
