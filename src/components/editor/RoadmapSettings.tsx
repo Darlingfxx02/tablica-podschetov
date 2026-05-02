@@ -28,11 +28,11 @@ export function RoadmapSettingsPanel() {
   }
 
   return (
-    <div className="flex flex-wrap items-start gap-4 px-4 py-3 bg-white border-b border-gray-200">
+    <div className="flex flex-wrap items-start gap-4 bg-white border border-gray-200 rounded-xl px-4 py-3">
       {/* Grouping toggle */}
       <div className="flex flex-col gap-1">
         <span className="text-[11px] text-gray-400">Группировка</span>
-        <div className="flex h-9 bg-gray-100 rounded-lg p-0.5">
+        <div className="flex h-9 bg-[var(--color-row-even)] rounded-lg p-0.5">
           <button
             onClick={() => update({ grouping: 'by-phase' })}
             className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all cursor-pointer ${
